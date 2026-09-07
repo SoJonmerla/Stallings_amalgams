@@ -1,0 +1,12 @@
+README.md
+pyproject.toml
+stallings_amalgams/__init__.py
+stallings_amalgams/algorithms.py
+stallings_amalgams/graph.py
+stallings_amalgams/groups.py
+stallings_amalgams/visualization.py
+stallings_amalgams.egg-info/PKG-INFO
+stallings_amalgams.egg-info/SOURCES.txt
+stallings_amalgams.egg-info/dependency_links.txt
+stallings_amalgams.egg-info/requires.txt
+stallings_amalgams.egg-info/top_level.txt
