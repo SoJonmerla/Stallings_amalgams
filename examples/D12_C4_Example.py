@@ -1,6 +1,6 @@
 from stallings_amalgams.groups import create_D2n, create_Cn
 from stallings_amalgams import get_red_precover
-from stallings_amalgams.visualization import visualize
+from stallings_amalgams.visualization import visualize, datatotex
 
 A = {6: 2}
 

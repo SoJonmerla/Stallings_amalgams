@@ -313,14 +313,14 @@ def visualize(H, loop_rad=4, loop_label_offset=0.30, arc_rad=0.25):
     # print(H.datatotex())
         
 
-def datatotex(G):
+def datatotex(H):
     f = ""
     G= nx.MultiDiGraph()
-    G.add_nodes_from(range(G.n_verts))
+    G.add_nodes_from(range(H.n_verts))
     pos_edges=[]
-    for label in G.mat:
+    for label in H.mat:
         if not label.endswith("^-1"):
-            for origin,row in enumerate(G.mat[label]):
+            for origin,row in enumerate(H.mat[label]):
                 pos_edges.extend([(origin,end,{"label":label}) for end in np.nonzero(row)[0]])
     G.add_edges_from(pos_edges)
     pos = nx.kamada_kawai_layout(G)
