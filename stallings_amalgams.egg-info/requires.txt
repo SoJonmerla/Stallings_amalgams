@@ -1,6 +1,0 @@
-numpy
-networkx
-matplotlib
-
-[test]
-pytest
