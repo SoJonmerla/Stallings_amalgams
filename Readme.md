@@ -65,8 +65,13 @@ The project requires Python 3.10 or later.
 
 The following example uses:
 
-- the dihedral group \(D_{12}\) of order 12;
-- the cyclic group \(C_4\) of order 4;
+- the dihedral group \(D_{12}\) of order 12 with cayley graph:
+![Image](/docs/D12_example.png
+ "Cayley graph of D12")
+
+- the cyclic group \(C_4\) of order 4:
+![Image](/docs/C4_example.png
+ "Cayley graph of C4")
 - an amalgamated subgroup identifying the reflection \(b\in D_{12}\) with \(c^2\in C_4\).
 
 ```python
@@ -77,16 +82,9 @@ from stallings_amalgams.visualization import visualize
 # create_D2n(n) constructs the dihedral group with 2n elements.
 D12 = create_D2n(6)
 
-The cayley graph obtained (compiled in latex with Tikz with code given by datatotex(D12)) is
-![Image](/docs/D12_example.png
- "Cayley graph of D12")
-
 # Construct the cyclic group of order 4.
 C4 = create_Cn(4)
 
-The cayley graph obtained is
-![Image](/docs/C4_example.png
- "Cayley graph of C4")
 
 # Identify b in D12 with c^2 in C4.
 # Group elements are represented by their Cayley-graph vertices.
