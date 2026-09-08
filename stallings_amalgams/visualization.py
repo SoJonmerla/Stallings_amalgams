@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
+from .graph import Graph
 
 def my_draw_networkx_edge_labels(
     G,
@@ -172,7 +173,70 @@ def my_draw_networkx_edge_labels(
 
     return text_items
 
-def visualize(H, loop_rad=4, loop_label_offset=0.30, arc_rad=0.25):
+def visualize(H: Graph,
+    loop_rad: float = 4.0,
+    loop_label_offset: float = 0.30,
+    arc_rad: float = 0.25
+    ) -> None:
+    """
+    Visualize a finite directed labelled graph.
+     
+    Only edges with positive labels are drawn. Inverse-labelled edges
+    are omitted because they represent the reverse orientations of the
+    corresponding positive-labelled edges.
+     
+    Edges between distinct vertices are drawn as straight edges unless
+    an edge also exists in the opposite direction. In that case, the
+    edges are curved to make both orientations visible. Loops are drawn
+    separately, and their labels are positioned manually.
+     
+    The distinguished basepoint is displayed as a larger vertex with a
+    black border.
+     
+    Parameters
+    ----------
+    H : Graph
+    The labelled graph to visualize.
+     
+    loop_rad : float, default=4.0
+    Curvature parameter used when drawing loops.
+     
+    loop_label_offset : float, default=0.30
+    Vertical distance between a vertex and the first loop label at
+    that vertex.
+     
+    arc_rad : float, default=0.25
+    Curvature parameter used for edges whose reverse orientation
+    is also present.
+     
+    Raises
+    ------
+    ValueError
+    If the graph has no vertices, if the basepoint is invalid, or
+    if one of the layout parameters is negative.
+     
+    Notes
+    -----
+    This function modifies neither the graph nor its adjacency matrices.
+    It displays the resulting figure using Matplotlib and returns no
+    value.
+    """
+    if H.n_verts < 1:
+        raise ValueError("The graph must contain at least one vertex.")
+        
+    if not 0 <= H.basepoint < H.n_verts:
+        raise ValueError(
+        f"The basepoint must be between 0 and {H.n_verts - 1}."
+        )
+    if loop_rad < 0:
+        raise ValueError("loop_rad must be non-negative.")
+        
+    if loop_label_offset < 0:
+        raise ValueError("loop_label_offset must be non-negative.")
+        
+    if arc_rad < 0:
+        raise ValueError("arc_rad must be non-negative.")
+        
     G= nx.MultiDiGraph()
     G.add_nodes_from(range(H.n_verts))
     # Add one directed edge for each positive label.

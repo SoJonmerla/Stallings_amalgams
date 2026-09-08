@@ -1,44 +1,122 @@
+from __future__ import annotations
+
 import numpy as np
 import copy
 
 # ======================================================================================================================
 
 class Graph:
-    def __init__(self,  labels, G = np.array([[0]]),basepoint=0):
-        self.n_verts = len(G)  # Número de nodos
+    def __init__(
+        self,
+        labels: list[str] | set[str],
+        G: np.ndarray | None = None,
+        basepoint: int = 0,
+    ) -> None:
+        """
+        Initialize a finite directed labelled graph.
+         
+        The graph is represented by a dictionary of adjacency matrices,
+        with one matrix for each edge label. For every supplied positive
+        label, the corresponding inverse label is added automatically.
+         
+        Parameters
+        ----------
+        labels : list[str] | set[str]
+        Edge labels used in the graph. A corresponding inverse label
+        of the form ``"label^-1"`` is added automatically when it is
+        not already present.
+         
+        G : numpy.ndarray, optional
+        A predefined labelled incidence matrix. The entry ``G[i][j]``
+        should contain the labels of the directed edges from vertex
+        ``i`` to vertex ``j``.
+         
+        If omitted, the graph is initialized with one vertex and no
+        edges.
+         
+        basepoint : int, default=0
+        Index of the distinguished basepoint vertex.
+         
+        Raises
+        ------
+        ValueError
+        If the graph has no vertices, if the basepoint is outside the
+        valid vertex range, or if no edge labels are supplied.
+        TypeError
+        If a label is not a string.
+         
+        Notes
+        -----
+        For each edge labelled ``x`` from vertex ``i`` to vertex ``j``,
+        the graph also stores an inverse edge labelled ``x^-1`` from
+        vertex ``j`` to vertex ``i``.
+        """
+        if not labels:
+            raise ValueError("At least one edge label must be supplied.")
+            
+        if not all(isinstance(label, str) for label in labels):
+            raise TypeError("Every edge label must be a string.")
+            
+        self.n_verts = 1 if G is None else len(G)  # Number of vertices
+        
+        if self.n_verts == 0:
+            raise ValueError("The graph must have at least one vertex.")
+        
+        if not 0 <= basepoint < self.n_verts:
+            raise ValueError(
+                f"basepoint must be between 0 and {self.n_verts - 1}"
+            )
+            
         self.labels=set(labels)
+        
         self.labels |= {f"{label}^-1" for label in self.labels if label[-3:]!="^-1"}
-        self.mat = self.initialize(self.n_verts, self.labels)  # Representación del grafo
+        
+        self.mat = self.initialize(self.n_verts, self.labels)  # Incidence matrices for each label
+        
         self.basepoint = basepoint
-        if G.any():  # Grafi predefinido en matriz de incidencia
+        
+        if G is not None:  # Matrices already given
             self.predefined(G)
+            
+            
     def initialize(self, n_verts, labels):
         """
-        Esta función inicializa el diccionario que representa relaciones de aristas entre nodos
-        :param:
-            labels str: letras del mismo valor
-            n_ verts int: número de nodos que hay en el grafo
-        :return:
-            d dict: diccionario donde las claves son letras y los valores asociados son matrices numpy. Si el valor de
-                la fila i y columna j es distinto de cero, indica que existe una arista dirigida desde el vertice i al
-                vertice j y la letra de dicha arista correspondrá con la clave en el diccionario.
-                OJO: el valor 1 indica a y el valor 1/2 indica a^-1???? BORRAR?
+        Initialize the dictionary representing edge relations between vertices.
+        
+        Parameters
+        ----------
+        labels : set[str]
+            Labels used for the edges.
+        n_verts : int
+            Number of vertices in the graph.
+        
+        Returns
+        -------
+        dict
+            A dictionary whose keys are edge labels and whose associated values
+            are NumPy matrices. A nonzero entry in row i and column j indicates
+            that there is a directed edge from vertex i to vertex j. The label
+            of that edge is the corresponding dictionary key.
         """
         d = {label: np.zeros([n_verts, n_verts], dtype=int) for label in labels}
         return d
 
     def predefined(self, g):
         """
-        Registrar el grafo predefinido
-        :param:
-            g list: matriz incidencia donde cada elemento es una lista que indica los labels de vertice i a vertice j
+        Register a predefined graph.
+        
+        Parameters
+        ----------
+        g : list
+            An incidence matrix in which each entry is a list containing the
+            labels of the directed edges from vertex i to vertex j.
         """
         index = np.argwhere(np.array(np.array(g, dtype=object), dtype=bool))
         for i, j in index:
             for label in g[i][j]:
                 self.add_edge(i, j, label)
                 
-    def get_cosets(self):
+    def get_cosets(self) -> dict[int, list[str]]:
         """
         Returns elements of the graph self via dict of elements with value a word on self.labels to get there.
         -------
@@ -68,17 +146,29 @@ class Graph:
 
         return elements
     
-    def add_edge(self,  vert_ini,  vert_end, label):
+    def add_edge(self,  vert_ini: int,  vert_end: int, label: str) -> None:
         """
-        Añadir la arista direccional (y su inversa) según el vertice inicial y final indicado con su label
-        :param:
-             vert_ini int: Indice del vertice saliente. 
-             vert_ini=-1: Arista con origen un nuevo vertice.
-             vert_end int: Indice del vertice entrante.
-             vert_end=-1: End vertex of edge is a new vertex to be defined.
-       
-
-            label str: la letra que tiene dicha arista
+        Add a directed edge, together with its inverse, between the specified
+        initial and terminal vertices.
+        
+        Parameters
+        ----------
+        vert_ini : int
+            Index of the initial vertex. If ``vert_ini == -1``, a new initial
+            vertex is created.
+        
+        vert_end : int
+            Index of the terminal vertex. If ``vert_end == -1``, a new terminal
+            vertex is created.
+        
+        label : str
+            Label assigned to the directed edge.
+        
+        Notes
+        -----
+        If an edge labelled ``x`` is added from ``vert_ini`` to ``vert_end``,
+        an inverse edge labelled ``x^-1`` is also added from ``vert_end`` to
+        ``vert_ini``.
         """
         inverse=label[:-3] if label[-3:]=="^-1" else label + "^-1"
         n_new=0
@@ -98,10 +188,52 @@ class Graph:
                 
         self.mat[label][vert_ini,  vert_end]|= 1
         self.mat[inverse][vert_end,vert_ini]|=1
-    def remove_vertex(self, vertex):
+    def remove_vertex(self, vertex: int) -> None:
+        """
+        Remove a vertex and all edges incident to it.
+    
+        The row and column corresponding to the vertex are removed from
+        every label-specific adjacency matrix. Vertices with larger indices
+        are subsequently reindexed.
+    
+        Parameters
+        ----------
+        vertex : int
+            Index of the vertex to remove.
+    
+        Raises
+        ------
+        IndexError
+            If ``vertex`` is not a valid vertex index.
+    
+        ValueError
+            If ``vertex`` is the graph's basepoint.
+    
+        Notes
+        -----
+        Removing a vertex decreases by one the indices of all vertices that
+        originally had indices greater than ``vertex``. The basepoint index
+        is adjusted accordingly.
+        """
+        if not 0 <= vertex < self.n_verts:
+            raise IndexError(
+                f"vertex must be between 0 and {self.n_verts - 1}"
+            )
+    
+        if vertex == self.basepoint:
+            raise ValueError("The basepoint vertex cannot be removed.")
+    
         for label in self.mat:
-            self.mat[label] = np.delete(self.mat[label], vertex, axis=0)
-            self.mat[label] = np.delete(self.mat[label], vertex, axis=1)
+            self.mat[label] = np.delete(
+                self.mat[label],
+                vertex,
+                axis=0,
+            )
+            self.mat[label] = np.delete(
+                self.mat[label],
+                vertex,
+                axis=1,
+            )
     
         self.n_verts -= 1
     
@@ -147,7 +279,7 @@ class Graph:
 
     def plot_matrix(self):
         """
-        A partir del grafo actual, imprimir la matriz de incidencia
+        Print incidence matrices in readable way
         """
         result = [[[] for _ in range(self.n_verts)] for _ in range(self.n_verts)]
         for label in self.mat:
@@ -167,26 +299,81 @@ class Graph:
         print(output)
 
 
-    def glue(self,  L):
+    def glue(self, vertices: list[int]) -> None:
         """
-        Pegar los vertices de self indexados por los int de L, vertice identificado tendr'a indice el menor de L'
-        :param:
-             L list of int: Vertices of self to glue.            
+        Glue the specified vertices into a single vertex.
+    
+        The vertex with the smallest index survives. All other vertices in
+        ``vertices`` are deleted, and their incident edges are transferred
+        to the surviving vertex.
+    
+        Parameters
+        ----------
+        vertices : list[int]
+            Indices of the vertices to glue.
+    
+        Raises
+        ------
+        ValueError
+            If fewer than two distinct vertices are supplied.
+    
+        IndexError
+            If any supplied vertex index is invalid.
+    
+        Notes
+        -----
+        If the basepoint belongs to ``vertices``, the surviving vertex
+        becomes the new basepoint. Otherwise, the basepoint index is adjusted
+        to account for deleted vertices with smaller indices.
         """
-        L.sort()
-        n=L[0]
-        L1=list(L[1:])
-        L1.reverse()
+        vertices = sorted(set(vertices))
+    
+        if len(vertices) < 2:
+            raise ValueError(
+                "At least two distinct vertices must be supplied."
+            )
+    
+        if any(vertex < 0 or vertex >= self.n_verts for vertex in vertices):
+            raise IndexError(
+                f"Vertex indices must be between 0 and {self.n_verts - 1}."
+            )
+    
+        survivor = vertices[0]
+        removed_vertices = vertices[1:]
+    
+        # Work out the new basepoint before deleting and reindexing vertices.
+        if self.basepoint in vertices:
+            new_basepoint = survivor
+        else:
+            deleted_before_basepoint = sum(
+                vertex < self.basepoint
+                for vertex in removed_vertices
+            )
+            new_basepoint = self.basepoint - deleted_before_basepoint
+    
+        # Delete vertices in descending order to preserve the remaining
+        # vertex indices during deletion.
         for label in self.mat:
-            for i in L1:
-                self.mat[label][n]|= self.mat[label][ i]
-                self.mat[label][:,  n]|= self.mat[label][:,  i]
-                self.mat[label] = np.delete(self.mat[label],  i, axis=0)
-                self.mat[label] = np.delete(self.mat[label],  i, axis=1)
-        self.n_verts=len(self.mat[label])
+            for vertex in reversed(removed_vertices):
+                self.mat[label][survivor] |= self.mat[label][vertex]
+                self.mat[label][:, survivor] |= self.mat[label][:, vertex]
+    
+                self.mat[label] = np.delete(
+                    self.mat[label],
+                    vertex,
+                    axis=0,
+                )
+                self.mat[label] = np.delete(
+                    self.mat[label],
+                    vertex,
+                    axis=1,
+                )
+    
+        self.n_verts -= len(removed_vertices)
+        self.basepoint = new_basepoint
         
         
-    def glue_pairs(self,pairs):
+    def glue_pairs(self,pairs: list[list[int,int]]) -> None:
         """
         Glue all pairs ov vertices in pairs. Ensures reindicing. Pairs must be lists of list
         """
@@ -208,14 +395,14 @@ class Graph:
                     pairs[i][1] -=1
      
     
-    def fold(self):
+    def fold(self) -> None:
         """
         Folds the graph of self until no further folding are possible.
         
         """
         for label in self.mat:
             if not label.endswith("^-1"):
-                for vertex in range(len(self.mat[label])):
+                for vertex in range(self.n_verts):
                     R=np.nonzero(self.mat[label][vertex])[0]
                     if len(R)>1:
                         self.glue(R)
@@ -228,18 +415,50 @@ class Graph:
                         return
                 
         
-    def cut_hairs(self):
-        for vertex in range(self.n_verts):
-            if vertex == self.basepoint:
-                continue
-            valence=0
-            for label in self.mat:
-                valence+=len(np.nonzero(self.mat[label][vertex])[0])
-                if valence>1:
+    def cut_hairs(self) -> None:
+        """
+        Remove all hairs from the graph.
+    
+        A hair is a non-basepoint vertex of valence at most one. When a hair
+        is removed, another vertex may become a hair, so the procedure is
+        repeated until no hairs remain.
+    
+        The basepoint is never removed.
+    
+        Notes
+        -----
+        The graph stores inverse edges explicitly. Therefore, examining the
+        outgoing edges for every label also detects edges that are incoming
+        with respect to the corresponding positive label.
+    
+        This method modifies the graph in place.
+        """
+        while True:
+            hair_found = False
+    
+            for vertex in range(self.n_verts):
+                if vertex == self.basepoint:
+                    continue
+    
+                valence = 0
+    
+                for label in self.mat:
+                    valence += np.count_nonzero(
+                        self.mat[label][vertex]
+                    )
+    
+                    if valence > 1:
+                        break
+    
+                if valence <= 1:
+                    self.remove_vertex(vertex)
+                    hair_found = True
                     break
-            else: # This will be executed if the if statement in the previous loop is never satisfied.
-                self.remove_vertex(vertex)
-                return self.cut_hairs()
+    
+            if not hair_found:
+                return
+            
+            
     def is_monochromatic_vertex(self, vertex, G1, G2):
         """
         True exactly when every edge incident to `vertex` is labelled
@@ -270,7 +489,33 @@ class Graph:
 
         return has_edge
 
-    def monochromatic_vertices(self, G1, G2):
+    def monochromatic_vertices(
+        self,
+        G1: Graph,
+        G2: Graph,
+    ) -> set[int]:
+        """
+        Return the vertices that are monochromatic with respect to ``G1``.
+    
+        A vertex is considered ``G1``-monochromatic if every edge incident
+        to it is labelled by a generator of ``G1`` or by the inverse of such
+        a generator. An isolated vertex is not considered monochromatic.
+    
+        Parameters
+        ----------
+        G1 : Graph
+            Cayley graph of the factor whose labels determine whether a
+            vertex is monochromatic.
+    
+        G2 : Graph
+            Cayley graph of the other factor.
+    
+        Returns
+        -------
+        set[int]
+            Indices of the vertices that are monochromatic with respect to
+            ``G1``.
+        """
         return {
             v for v in range(self.n_verts)
             if self.is_monochromatic_vertex(v,  G1, G2)
@@ -401,7 +646,7 @@ class Graph:
     
         return False, group, K
         
-    def next_vertex(self, vertex, label):
+    def next_vertex(self, vertex: int, label: str) -> int:
         """
         Follow one directed edge labelled `label`.
     
@@ -425,7 +670,7 @@ class Graph:
     
         return int(targets[0])
     
-    def read_word(self, start, word):
+    def read_word(self, start: int, word: list[str]) -> int | None:
         """
         Read a word from `start`. Word must be a list of gen and inverses.
     
@@ -442,9 +687,9 @@ class Graph:
     
         return vertex
     
-    def stabilizer(self, vertex,group):
+    def stabilizer(self, vertex: int,group: Graph) -> set:
         """
-        Return the subgroup of `group` represented by loops at `vertex`. 
+        Return the subgroup of `group` represented by loops at `vertex` in self. 
     
         Assumes group is a graph object representing its cayley graph' 
         Furhthermore, assumes self is already a cover of group!!
@@ -460,7 +705,7 @@ class Graph:
     
         return K
     
-    def rel_cayley(G,H):
+    def rel_cayley(G,H: dict[int]):
         """
         Get rel cayley graph of H in G. H given by subset of elements of G
 
@@ -468,11 +713,11 @@ class Graph:
         Graph object corresponding to Cay(G,H)
         
         This works because cayley graph with identifications is still G-based. 
-        So G-based + stablizer =H + saturated  implies isomorphic to rel cayley graph.
+        So G-based + (stabilizer = H) + saturated  implies isomorphic to rel cayley graph.
         G-based comes from the fact that if a path p in the cayley graph after identification
         labels 1, then we can find a path in 
         original cayley graph with same label that has to be closed. So folding 
-        closes the the path p.
+        closes the path p.
 
         """
         D = copy.deepcopy(G)

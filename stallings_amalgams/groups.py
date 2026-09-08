@@ -4,21 +4,24 @@ from .graph import Graph
 import numpy as np
 
 
-def create_D2n(n):
+def create_D2n(n: int) -> Graph:
     """
     
 
     Parameters
     ----------
     n : int
-        non-negative integer.
+        positive integer.
 
     Returns
     -------
     D2n : Graph
-        Dyhedral group of 2n elements with rotation a and reflection b.
+        Dihedral group of 2n elements with rotation a and reflection b.
 
     """
+    if n < 1:
+        raise ValueError("n must be a non-negative integer")
+    
     D2n=Graph(["a","b"],np.array([[[] for _ in range(2*n)]for _ in range(2*n)]))
     for i in range(n-1):
         D2n.add_edge(i,i+1,label="a")
@@ -32,7 +35,7 @@ def create_D2n(n):
     return D2n
 
 
-def create_Cn(n):
+def create_Cn(n: int) -> Graph:
     """
     
 
