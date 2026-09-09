@@ -114,7 +114,11 @@ Images are obtained with Tikz and Latex with datatotex() function in Stallings_a
 ```text
 Stallings_amalgams/
 ├── docs/
-│   └── D12_C4_example.png
+│   ├── C4_example.png
+│   ├── C5semiC4_example.png
+│   ├── C5semiC4_example_py.png
+│   ├── D12_C4_example.png
+│   └── D12_example.png
 ├── examples/
 │   └── D12_C4_Example.py
 ├── stallings_amalgams/
@@ -124,7 +128,7 @@ Stallings_amalgams/
 │   ├── groups.py
 │   └── visualization.py
 |___ tests/
-|    └── tests.py
+|    └── test_all.py
 ├── .gitignore
 ├── pyproject.toml
 └── README.md
