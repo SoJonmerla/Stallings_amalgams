@@ -388,7 +388,7 @@ def datatotex(H):
     G.add_edges_from(pos_edges)
     pos = nx.kamada_kawai_layout(G)
     for key in pos:
-        f+=f"\\draw (5*{pos[key][0]},5*{pos[key][1]}) node[circle,scale = 1.3,thick,blue!60,inner sep = 0.4pt,outer sep = 1.7pt]({key}){{{key}}};\\n"
+        f+=f"\\draw (5*{pos[key][0]},5*{pos[key][1]}) node[circle,scale = 1.3,thick,blue!60,inner sep = 0.4pt,outer sep = 1.7pt]({key}){{{key}}};\n"
     edges={}
     for edge in pos_edges:
         if edge[:-1] not in edges and edge[:-1][::-1] not in edges:
@@ -409,18 +409,18 @@ def datatotex(H):
             if x < 0:
                 zeta = (np.arctan(y/x) + np.pi)*360/(2*np.pi)
             if n==1:                        
-                f+=f"\\path [thick,draw=black,-{{Stealth}}]\\n ({pair[0]}) to[loop,min distance=15mm,in={zeta}+30,out={zeta}-30,looseness=5] node[scale=1.2,thick,fill=white,circle, anchor=center, pos=0.5,inner sep=1pt,minimum size=4pt]{{${edges[pair][0]}$}} ({pair[1]});\\n"
+                f+=f"\\path [thick,draw=black,-{{Stealth}}]\n ({pair[0]}) to[loop,min distance=15mm,in={zeta}+30,out={zeta}-30,looseness=5] node[scale=1.2,thick,fill=white,circle, anchor=center, pos=0.5,inner sep=1pt,minimum size=4pt]{{${edges[pair][0]}$}} ({pair[1]});\n"
             else:
                 for i, label in enumerate(edges[pair]):
-                    f+= f"\\path [thick,draw=black,-{{Stealth}}]\\n ({pair[0]}) to[loop,min distance=20mm,in={zeta+90-(i+1)*180/(n+2)},out={zeta+90-(i+2)*180/(n+2)},looseness=5] node[scale=1.2,thick,fill=white,circle, anchor=center, pos=0.5,inner sep=1pt,minimum size=4pt]{{${label}$}} ({pair[1]});\\n"
+                    f+= f"\\path [thick,draw=black,-{{Stealth}}]\n ({pair[0]}) to[loop,min distance=20mm,in={zeta+90-(i+1)*180/(n+2)},out={zeta+90-(i+2)*180/(n+2)},looseness=5] node[scale=1.2,thick,fill=white,circle, anchor=center, pos=0.5,inner sep=1pt,minimum size=4pt]{{${label}$}} ({pair[1]});\n"
 
         else:
             if n==1:
-                f+=f"\\path [thick,draw=black,-{{Stealth}}]\\n ({pair[0]}) --node[fill=white, anchor=center, pos=0.5,inner sep=0.5pt,minimum size=4pt]{{${edges[pair][0]}$}} ({pair[1]});\\n"
+                f+=f"\\path [thick,draw=black,-{{Stealth}}]\n ({pair[0]}) --node[fill=white, anchor=center, pos=0.5,inner sep=0.5pt,minimum size=4pt]{{${edges[pair][0]}$}} ({pair[1]});\n"
             else:
                 for i,label in enumerate(edges[pair]):
                     if label.endswith("-1"):
-                        f+= f"\\path [thick,draw=black,-{{Stealth}}]\\n ({pair[1]}) to[bend right = {90-(i+1)*180/(n+1)}] node[scale=1.2,thick,fill=white, anchor=center, pos=0.5,inner sep=0.7pt,minimum size=4pt]{{${label[:-2]}$}} ({pair[0]});\\n"
+                        f+= f"\\path [thick,draw=black,-{{Stealth}}]\n ({pair[1]}) to[bend right = {90-(i+1)*180/(n+1)}] node[scale=1.2,thick,fill=white, anchor=center, pos=0.5,inner sep=0.7pt,minimum size=4pt]{{${label[:-2]}$}} ({pair[0]});\n"
                     else:
-                        f+= f"\\path [thick,draw=black,-{{Stealth}}]\\n ({pair[0]}) to[bend left = {90-(i+1)*180/(n+1)}] node[scale=1.2,thick,fill=white, anchor=center, pos=0.5,inner sep=0.7pt,minimum size=4pt]{{${label}$}} ({pair[1]});\\n"
+                        f+= f"\\path [thick,draw=black,-{{Stealth}}]\n ({pair[0]}) to[bend left = {90-(i+1)*180/(n+1)}] node[scale=1.2,thick,fill=white, anchor=center, pos=0.5,inner sep=0.7pt,minimum size=4pt]{{${label}$}} ({pair[1]});\n"
     print(f)
