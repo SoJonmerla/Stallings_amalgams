@@ -174,8 +174,8 @@ def my_draw_networkx_edge_labels(
     return text_items
 
 def visualize(H: Graph,
-    loop_rad: float = 4.0,
-    loop_label_offset: float = 0.30,
+    loop_rad: float = 0.5,
+    loop_label_offset: float = 0.13,
     arc_rad: float = 0.25
     ) -> None:
     """
@@ -332,6 +332,7 @@ def visualize(H: Graph,
         width=2,
         arrowsize=20
     )
+    
     nx.draw_networkx_edges(
         G,
         pos,
@@ -347,7 +348,6 @@ def visualize(H: Graph,
     edge_labels = nx.get_edge_attributes(G,'label')
     curved_edge_labels = {edge[:-1]: edge_labels[edge] for edge in curved_edges}
     straight_edge_labels = {edge[:-1]: edge_labels[edge] for edge in straight_edges}
-    loop_edge_labels= {edge[:-1]: edge_labels[edge] for edge in loop_edges}
     my_draw_networkx_edge_labels(G, pos, ax=ax, edge_labels=curved_edge_labels,rad = arc_rad, font_size=25)
     nx.draw_networkx_edge_labels(G, pos, ax=ax, edge_labels=straight_edge_labels, font_size=25)
     # ------------------------------------------------------------------
@@ -370,8 +370,7 @@ def visualize(H: Graph,
             zorder=10,
             color="black"
         )
-    # nx.draw_networkx_edges(G, pos,ax=ax, edgelist=[(0,1,0)], width = 2, arrowsize = 20)#REMOVE
-    # nx.draw_networkx_edge_labels(G, pos, ax=ax, edge_labels={(0,1):"y"}, font_size=25)#REMOVE
+    
     plt.title("Directed Graph Visualization")
     plt.show()    
     # print(H.datatotex())
@@ -389,7 +388,7 @@ def datatotex(H):
     G.add_edges_from(pos_edges)
     pos = nx.kamada_kawai_layout(G)
     for key in pos:
-        f+="\draw (5*{},5*{}) node[circle,scale = 1.3,thick,blue!60,inner sep = 0.4pt,outer sep = 1.7pt]({}){{{}}};\n".format(pos[key][0],pos[key][1],key,key)
+        f+=f"\\draw (5*{pos[key][0]},5*{pos[key][1]}) node[circle,scale = 1.3,thick,blue!60,inner sep = 0.4pt,outer sep = 1.7pt]({key}){{{key}}};\\n"
     edges={}
     for edge in pos_edges:
         if edge[:-1] not in edges and edge[:-1][::-1] not in edges:
@@ -410,18 +409,18 @@ def datatotex(H):
             if x < 0:
                 zeta = (np.arctan(y/x) + np.pi)*360/(2*np.pi)
             if n==1:                        
-                f+="\path [thick,draw=black,-{{Stealth}}]\n ({}) to[loop,min distance=15mm,in={}+30,out={}-30,looseness=5] node[scale=1.2,thick,fill=white,circle, anchor=center, pos=0.5,inner sep=1pt,minimum size=4pt]{{${}$}} ({});\n".format(pair[0],zeta,zeta,edges[pair][0],pair[1])
+                f+=f"\\path [thick,draw=black,-{{Stealth}}]\\n ({pair[0]}) to[loop,min distance=15mm,in={zeta}+30,out={zeta}-30,looseness=5] node[scale=1.2,thick,fill=white,circle, anchor=center, pos=0.5,inner sep=1pt,minimum size=4pt]{{${edges[pair][0]}$}} ({pair[1]});\\n"
             else:
                 for i, label in enumerate(edges[pair]):
-                    f+= "\path [thick,draw=black,-{{Stealth}}]\n ({}) to[loop,min distance=20mm,in={},out={},looseness=5] node[scale=1.2,thick,fill=white,circle, anchor=center, pos=0.5,inner sep=1pt,minimum size=4pt]{{${}$}} ({});\n".format(pair[0],zeta+90-(i+1)*180/(n+2),zeta+90-(i+2)*180/(n+2),label,pair[1])
+                    f+= f"\\path [thick,draw=black,-{{Stealth}}]\\n ({pair[0]}) to[loop,min distance=20mm,in={zeta+90-(i+1)*180/(n+2)},out={zeta+90-(i+2)*180/(n+2)},looseness=5] node[scale=1.2,thick,fill=white,circle, anchor=center, pos=0.5,inner sep=1pt,minimum size=4pt]{{${label}$}} ({pair[1]});\\n"
 
         else:
             if n==1:
-                f+="\path [thick,draw=black,-{{Stealth}}]\n ({}) --node[fill=white, anchor=center, pos=0.5,inner sep=0.5pt,minimum size=4pt]{{${}$}} ({});\n".format(pair[0],edges[pair][0],pair[1])
+                f+=f"\\path [thick,draw=black,-{{Stealth}}]\\n ({pair[0]}) --node[fill=white, anchor=center, pos=0.5,inner sep=0.5pt,minimum size=4pt]{{${edges[pair][0]}$}} ({pair[1]});\\n"
             else:
                 for i,label in enumerate(edges[pair]):
                     if label.endswith("-1"):
-                        f+= "\path [thick,draw=black,-{{Stealth}}]\n ({}) to[bend right = {}] node[scale=1.2,thick,fill=white, anchor=center, pos=0.5,inner sep=0.7pt,minimum size=4pt]{{${}$}} ({});\n".format(pair[1],90-(i+1)*180/(n+1),label[:-2],pair[0])
+                        f+= f"\\path [thick,draw=black,-{{Stealth}}]\\n ({pair[1]}) to[bend right = {90-(i+1)*180/(n+1)}] node[scale=1.2,thick,fill=white, anchor=center, pos=0.5,inner sep=0.7pt,minimum size=4pt]{{${label[:-2]}$}} ({pair[0]});\\n"
                     else:
-                        f+= "\path [thick,draw=black,-{{Stealth}}]\n ({}) to[bend left = {}] node[scale=1.2,thick,fill=white, anchor=center, pos=0.5,inner sep=0.7pt,minimum size=4pt]{{${}$}} ({});\n".format(pair[0],90-(i+1)*180/(n+1),label,pair[1])
+                        f+= f"\\path [thick,draw=black,-{{Stealth}}]\\n ({pair[0]}) to[bend left = {90-(i+1)*180/(n+1)}] node[scale=1.2,thick,fill=white, anchor=center, pos=0.5,inner sep=0.7pt,minimum size=4pt]{{${label}$}} ({pair[1]});\\n"
     print(f)

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 import copy
+import networkx as nx
 
 # ======================================================================================================================
 
@@ -112,9 +113,29 @@ class Graph:
             labels of the directed edges from vertex i to vertex j.
         """
         index = np.argwhere(np.array(np.array(g, dtype=object), dtype=bool))
-        for i, j in index:
+        for i, j,_ in index:
             for label in g[i][j]:
                 self.add_edge(i, j, label)
+        
+        
+    def __eq__(self, other):
+        if not isinstance(other, Graph):
+            return NotImplemented
+    
+        if self.labels != other.labels:
+            return False
+    
+        if self.n_verts != other.n_verts:
+            return False
+    
+        if self.basepoint != other.basepoint:
+            return False
+    
+        for label in self.labels:
+            if not np.array_equal(self.mat[label], other.mat[label]):
+                return False
+    
+        return True
                 
     def get_cosets(self) -> dict[int, list[str]]:
         """
@@ -162,7 +183,8 @@ class Graph:
             vertex is created.
         
         label : str
-            Label assigned to the directed edge.
+            Label assigned to the directed edge. If label not in self.labels,
+            adds it to the set of labels.
         
         Notes
         -----
@@ -185,7 +207,11 @@ class Graph:
                 a=self.mat[letter]
                 self.mat[letter]=np.full((self.n_verts,self.n_verts),0)
                 self.mat[letter][:self.n_verts-n_new,:self.n_verts-n_new]=a
-                
+        if label not in self.labels:
+            self.mat[label] = np.full((self.n_verts,self.n_verts),0)
+            self.mat[inverse] = np.full((self.n_verts,self.n_verts),0)
+            self.labels |= {label,inverse}
+        
         self.mat[label][vert_ini,  vert_end]|= 1
         self.mat[inverse][vert_end,vert_ini]|=1
     def remove_vertex(self, vertex: int) -> None:
@@ -314,8 +340,6 @@ class Graph:
     
         Raises
         ------
-        ValueError
-            If fewer than two distinct vertices are supplied.
     
         IndexError
             If any supplied vertex index is invalid.
@@ -328,10 +352,8 @@ class Graph:
         """
         vertices = sorted(set(vertices))
     
-        if len(vertices) < 2:
-            raise ValueError(
-                "At least two distinct vertices must be supplied."
-            )
+        if len(vertices) <= 1:
+            return
     
         if any(vertex < 0 or vertex >= self.n_verts for vertex in vertices):
             raise IndexError(
@@ -721,6 +743,7 @@ class Graph:
 
         """
         D = copy.deepcopy(G)
+        H = set(H) | {G.basepoint}
         D.glue(list(H))
         D.fold()
         return D
@@ -749,3 +772,43 @@ class Graph:
                 zero_matrix[n1:,n1:] = G2.mat[label]
             self.mat[label]=zero_matrix
         self.glue([u,n1+v])
+
+    def isomorphic_cayley_graphs(G1, G2):
+        """
+        Check whether two Cayley graphs are identical up to a renumbering
+        of vertices.
+    
+        Parameters
+        ----------
+        G1, G2 : Graph
+    
+        Returns
+        -------
+        bool
+        """
+        if G1.labels != G2.labels:
+            return False
+    
+        H1 = nx.MultiDiGraph()
+        H2 = nx.MultiDiGraph()
+    
+        H1.add_nodes_from(range(G1.n_verts))
+        H2.add_nodes_from(range(G2.n_verts))
+    
+        for label in G1.labels:
+            M = G1.mat[label]
+    
+            for i, j in zip(*M.nonzero()):
+                H1.add_edge(i, j, label=label)
+    
+        for label in G2.labels:
+            M = G2.mat[label]
+    
+            for i, j in zip(*M.nonzero()):
+                H2.add_edge(i, j, label=label)
+    
+        edge_match = nx.algorithms.isomorphism.categorical_multiedge_match(
+            "label", None
+        )
+    
+        return nx.is_isomorphic(H1, H2, edge_match=edge_match)

@@ -225,7 +225,13 @@ def Step5(
         if not removed:
             break
         
-    if not G.bichromatic_vertices(G1, G2) and (G.stabilizer(G.basepoint, G1) == {G1.basepoint} or G.stabilizer(G.basepoint, G2) == {G2.basepoint}):
+    if not G.bichromatic_vertices(G1, G2) and (
+        (G.stabilizer(G.basepoint, G1) == {G1.basepoint}
+         and G.is_monochromatic_vertex(G.basepoint, G1, G2))
+        or
+        (G.stabilizer(G.basepoint, G2) == {G2.basepoint}
+         and G.is_monochromatic_vertex(G.basepoint, G2, G1))
+    ):        
         G.n_verts = 1
         G.basepoint = 0
         
@@ -280,6 +286,7 @@ def Step6(
         G1elms=G1.get_cosets()
         G2elms=G2.get_cosets()
         if len(L)>1:
+            L = {A[i] for i in L}
             rel = Graph.rel_cayley(G2,L)
             G.Wedge(rel, G.basepoint, rel.basepoint)
             for a in A:
@@ -298,6 +305,7 @@ def Step6(
         G1elms=G1.get_cosets()
         G2elms=G2.get_cosets()
         if len(L)>1:
+            L = {i for i in A if A[i] in L}
             rel = Graph.rel_cayley(G1,L)
             G.Wedge(rel, G.basepoint, rel.basepoint)
             for a in A:
