@@ -422,20 +422,27 @@ class Graph:
         Folds the graph of self until no further folding are possible.
         
         """
-        for label in self.mat:
-            if not label.endswith("^-1"):
-                for vertex in range(self.n_verts):
-                    R=np.nonzero(self.mat[label][vertex])[0]
-                    if len(R)>1:
-                        self.glue(R)
-                        self.fold()
-                        return
-                    R=np.nonzero(self.mat[label][:,vertex])[0]
-                    if len(R)>1:
-                        self.glue(R)
-                        self.fold()
-                        return
-                
+        while True:
+            fold_found=False
+            for label in self.mat:
+                if not label.endswith("^-1"):
+                    for vertex in range(self.n_verts):
+                        R=np.nonzero(self.mat[label][vertex])[0]
+                        if len(R)>1:
+                            self.glue(R)
+                            fold_found=True
+                            break
+                            
+                            
+                        R=np.nonzero(self.mat[label][:,vertex])[0]
+                        if len(R)>1:
+                            self.glue(R)
+                            fold_found=True
+                            break
+                            
+            if not fold_found:
+                return
+                    
         
     def cut_hairs(self) -> None:
         """
@@ -560,7 +567,7 @@ class Graph:
             component = {i for i in range(self.n_verts)}
         return {i for i in component if i not in self.monochromatic_vertices(G1, G2)|self.monochromatic_vertices(G2, G1)}
             
-    def monochromatic_components(self, G):
+    def monochromatic_components(self, G: Graph) -> list[dict]:
         """
         Return the connected X-components of the graph. Where X is the gens of G
     
