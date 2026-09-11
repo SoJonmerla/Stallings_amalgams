@@ -348,8 +348,8 @@ def visualize(H: Graph,
     edge_labels = nx.get_edge_attributes(G,'label')
     curved_edge_labels = {edge[:-1]: edge_labels[edge] for edge in curved_edges}
     straight_edge_labels = {edge[:-1]: edge_labels[edge] for edge in straight_edges}
-    my_draw_networkx_edge_labels(G, pos, ax=ax, edge_labels=curved_edge_labels,rad = arc_rad, font_size=25)
-    nx.draw_networkx_edge_labels(G, pos, ax=ax, edge_labels=straight_edge_labels, font_size=25)
+    my_draw_networkx_edge_labels(G, pos, ax=ax, edge_labels=curved_edge_labels,rad = arc_rad, font_size=20)
+    nx.draw_networkx_edge_labels(G, pos, ax=ax, edge_labels=straight_edge_labels, font_size=20)
     # ------------------------------------------------------------------
     # Labels on loops
     #
