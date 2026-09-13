@@ -1,5 +1,5 @@
 from __future__ import annotations
-from stallings_amalgams.algorithms import inverse_label, inverse_word
+from stallings_amalgams.words import inverse_label, inverse_word
 from collections import deque
 
 
