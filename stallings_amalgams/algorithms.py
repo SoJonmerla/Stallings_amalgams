@@ -1,5 +1,6 @@
 import numpy as np
 from .graph import Graph
+from .words import inverse_word,inverse_label,tree_word
 
 def Step1(
     G1: Graph,
@@ -393,7 +394,7 @@ def subgroup_index(
     G1: Graph,
     G2: Graph,
     A: dict[int, int],
-    subgroup_generators: list[list[str]],
+    subgroup_generators: list[list[str]]
 ) -> int | None:
     """
     Return the index of the generated subgroup, or ``None`` if the index
@@ -547,7 +548,44 @@ def product_graph(G1: Graph, G2: Graph) -> Graph:
 
     return prod
 
+
+
+
+
+
+
+def get_pi1_gen_set(G: Graph, root = None) -> list[list[str]]:
+    """
+    Returns the based loops associated with edges outside a spanning tree.
+
+    Each returned word has the form ``p_v x p_u^-1``, where ``v --x--> u``
+    is an outside edge and ``p_v``, ``p_u`` are tree paths from the root.
     
+    Parameters
+    ----------
+    graph : Graph
+    Connected folded inverse graph. Each edge is assumed to have an
+    explicitly stored inverse edge.
+    
+    root : int or None, optional
+    Root of the spanning tree. If ``None``, ``graph.basepoint`` is used.
+    
+    Returns
+    -------
+    list[list[str]]
+
+    
+
+    """
+    gen_set = []
+    if root is None:
+        root = G.basepoint
+    parent, parent_label, outside_edges = G.spanning_tree_data(root)
+    for (v,u,label) in outside_edges:
+        pv = tree_word(v,parent,parent_label)
+        pu = tree_word(u,parent,parent_label)
+        gen_set.append(pv + [label] + inverse_word(pu))
+    return gen_set
 
                                    
             
