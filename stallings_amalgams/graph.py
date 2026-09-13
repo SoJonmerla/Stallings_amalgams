@@ -1,4 +1,7 @@
 from __future__ import annotations
+from stallings_amalgams.words import inverse_label, inverse_word
+from collections import deque
+
 
 import numpy as np
 import copy
@@ -15,29 +18,29 @@ class Graph:
     ) -> None:
         """
         Initialize a finite directed labelled graph.
-         
+
         The graph is represented by a dictionary of adjacency matrices,
         with one matrix for each edge label. For every supplied positive
         label, the corresponding inverse label is added automatically.
-         
+
         Parameters
         ----------
         labels : list[str] | set[str]
         Edge labels used in the graph. A corresponding inverse label
         of the form ``"label^-1"`` is added automatically when it is
         not already present.
-         
+
         G : numpy.ndarray, optional
         A predefined labelled incidence matrix. The entry ``G[i][j]``
         should contain the labels of the directed edges from vertex
         ``i`` to vertex ``j``.
-         
+
         If omitted, the graph is initialized with one vertex and no
         edges.
-         
+
         basepoint : int, default=0
         Index of the distinguished basepoint vertex.
-         
+
         Raises
         ------
         ValueError
@@ -45,7 +48,7 @@ class Graph:
         valid vertex range, or if no edge labels are supplied.
         TypeError
         If a label is not a string.
-         
+
         Notes
         -----
         For each edge labelled ``x`` from vertex ``i`` to vertex ``j``,
@@ -422,20 +425,27 @@ class Graph:
         Folds the graph of self until no further folding are possible.
         
         """
-        for label in self.mat:
-            if not label.endswith("^-1"):
-                for vertex in range(self.n_verts):
-                    R=np.nonzero(self.mat[label][vertex])[0]
-                    if len(R)>1:
-                        self.glue(R)
-                        self.fold()
-                        return
-                    R=np.nonzero(self.mat[label][:,vertex])[0]
-                    if len(R)>1:
-                        self.glue(R)
-                        self.fold()
-                        return
-                
+        while True:
+            fold_found=False
+            for label in self.mat:
+                if not label.endswith("^-1"):
+                    for vertex in range(self.n_verts):
+                        R=np.nonzero(self.mat[label][vertex])[0]
+                        if len(R)>1:
+                            self.glue(R)
+                            fold_found=True
+                            break
+                            
+                            
+                        R=np.nonzero(self.mat[label][:,vertex])[0]
+                        if len(R)>1:
+                            self.glue(R)
+                            fold_found=True
+                            break
+                            
+            if not fold_found:
+                return
+                    
         
     def cut_hairs(self) -> None:
         """
@@ -559,8 +569,76 @@ class Graph:
         if component is None:
             component = {i for i in range(self.n_verts)}
         return {i for i in component if i not in self.monochromatic_vertices(G1, G2)|self.monochromatic_vertices(G2, G1)}
+
+
+
+    def spanning_tree_data(
+    self: Graph,
+    root: int | None = None,
+    ) -> tuple[
+    dict[int, int | None],
+    dict[int, str],
+    list[tuple[int, int, str]],
+    ]:
+        """
+        Construct a rooted spanning tree of a connected labelled graph. Assumes 
+        folded graph
+
+        Parameters
+        ----------
+        graph : Graph
+            Connected labelled graph.
+
+        root : int or None
+            Root of the spanning tree. If ``None``, the graph basepoint is
+            used.
+
+        Returns
+        -------
+        parent : dict[int, int or None]
+            Parent of each vertex in the spanning tree. The root has parent
+            ``None``.
+
+        parent_label : dict[int, str]
+            For each non-root vertex, the label of the tree edge directed
+            from its parent to that vertex.
+
+        outside_edges : list[tuple[int, int, str]]
+            Edges outside the spanning tree. Each edge is represented once
+            as ``(source, target, label)``.
+        """
+        if root is None:
+            root = self.basepoint
+        if not 0 <= root < self.n_verts:
+            raise ValueError("root must be a vertex of the graph")
+        
+        queue = deque([root])
+        parent = {root : None}
+        parent_label = {}
+        outside_edges = []
+
+        while queue:
+            v = queue.popleft()
+            for label in self.labels:
+                if v != root and label == inverse_label(parent_label[v]):
+                    continue
+                matrix  = self.mat[label]
+                link = np.nonzero(matrix[v])[0]
+                for u in link:
+                    u = int(u)
+                    if u in parent:
+                        if not label.endswith("^-1"):
+                            outside_edges.append((v,u,label))
+                        continue
+                    parent[u] = v
+                    parent_label[u] = label
+                    queue.append(u)
+        return parent, parent_label, outside_edges
+
+
+
             
-    def monochromatic_components(self, G):
+    def monochromatic_components(self, G: Graph) -> list[dict]:
         """
         Return the connected X-components of the graph. Where X is the gens of G
     
@@ -812,3 +890,4 @@ class Graph:
         )
     
         return nx.is_isomorphic(H1, H2, edge_match=edge_match)
+

@@ -124,8 +124,7 @@ def semidirect_product(G1: Graph, G2:Graph, action: dict[str, dict[str, list[str
                     for c,letter in enumerate(reversed(action[b][a][1:])):
                         Gtemp.add_edge(3+c, -1,letter+"^-1")
                     Gtemp.add_edge(0,Gtemp.n_verts -1,action[b][a][0])
-                    for r in range(Gtemp.n_verts):
-                        G.Wedge(Gtemp, i*n2 + j, r)
+                    G.Wedge(Gtemp, i*n2 + j, 0)
 
     G.fold()                
     return(G)
