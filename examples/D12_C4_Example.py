@@ -11,9 +11,10 @@ H = [
 ]
 
 D12 = create_D2n(6)
-visualize(D12)
+# visualize(D12)
 C4 = create_Cn(4)
 
 
 P = get_red_precover(D12, C4, A, H)
 visualize(P)
+# print(spanning_tree_data(P))
