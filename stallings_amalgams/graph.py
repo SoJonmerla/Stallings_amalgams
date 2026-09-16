@@ -1,5 +1,5 @@
 from __future__ import annotations
-from stallings_amalgams.algorithms import inverse_label, inverse_word
+from stallings_amalgams.words import inverse_label, inverse_word
 from collections import deque
 
 
@@ -573,12 +573,12 @@ class Graph:
 
 
     def spanning_tree_data(
-    self: Graph,
-    root: int | None = None,
+        self: Graph,
+        root: int | None = None,
     ) -> tuple[
-    dict[int, int | None],
-    dict[int, str],
-    list[tuple[int, int, str]],
+        dict[int, int | None],
+        dict[int, str],
+        list[tuple[int, int, str]],
     ]:
         """
         Construct a rooted spanning tree of a connected labelled graph. Assumes 

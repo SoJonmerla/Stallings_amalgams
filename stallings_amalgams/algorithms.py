@@ -1,6 +1,6 @@
 import numpy as np
-from .graph import Graph
-from .words import inverse_word,inverse_label,tree_word
+from stallings_amalgams import Graph
+from stallings_amalgams.words import inverse_word,inverse_label,tree_word
 
 def Step1(
     G1: Graph,
