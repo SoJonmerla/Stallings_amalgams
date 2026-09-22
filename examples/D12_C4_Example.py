@@ -10,7 +10,7 @@ H = [
     ["a", "c", "a", "c", "a", "c"],
 ]
 
-D12 = create_D2n(6)
+D12 = create_D2n(6) 
 # visualize(D12)
 C4 = create_Cn(4)
 

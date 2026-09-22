@@ -208,11 +208,11 @@ class Graph:
         if n_new>0:
             for letter in self.mat:
                 a=self.mat[letter]
-                self.mat[letter]=np.full((self.n_verts,self.n_verts),0)
+                self.mat[letter]=np.full((self.n_verts,self.n_verts),0, dtype=int)
                 self.mat[letter][:self.n_verts-n_new,:self.n_verts-n_new]=a
         if label not in self.labels:
-            self.mat[label] = np.full((self.n_verts,self.n_verts),0)
-            self.mat[inverse] = np.full((self.n_verts,self.n_verts),0)
+            self.mat[label] = np.full((self.n_verts,self.n_verts),0, dtype=int)
+            self.mat[inverse] = np.full((self.n_verts,self.n_verts),0, dtype=int)
             self.labels |= {label,inverse}
         
         self.mat[label][vert_ini,  vert_end]|= 1
@@ -414,7 +414,7 @@ class Graph:
                 if pairs[i][0] > removed:
                     pairs[i][0] -=1
                 if pairs[i][1] == removed:
-                    pairs[0]=survivor
+                    pairs[i][1] = survivor
                     
                 if pairs[i][1] > removed:
                     pairs[i][1] -=1
@@ -804,7 +804,7 @@ class Graph:
                 K.add(g)
     
         return K
-    
+    @staticmethod
     def rel_cayley(G,H: dict[int]):
         """
         Get rel cayley graph of H in G. H given by subset of elements of G
@@ -843,14 +843,15 @@ class Graph:
         N = self.n_verts
         self.labels|=G2.labels
         for label in self.labels:
-            zero_matrix = np.full((N,N),0)
+            zero_matrix = np.full((N,N),0, dtype=int)
             if label in self.mat:
                 zero_matrix[:n1,:n1] = self.mat[label]
             if label in G2.mat:
                 zero_matrix[n1:,n1:] = G2.mat[label]
             self.mat[label]=zero_matrix
         self.glue([u,n1+v])
-
+        
+    @staticmethod
     def isomorphic_cayley_graphs(G1, G2):
         """
         Check whether two Cayley graphs are identical up to a renumbering

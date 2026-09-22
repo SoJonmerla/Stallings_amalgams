@@ -30,7 +30,9 @@ def inverse_word(word: list[str]) -> list[str]:
     label in reversed(word)
     ]
 
-def free_red(w: list[str]) -> list[str]:
+def free_reduce(w: list[str]) -> list[str]:
+    if not w:
+        return []
     queue = deque(w.copy())
     red_word = [queue.popleft()]
     while queue:

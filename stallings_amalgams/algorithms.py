@@ -1,6 +1,7 @@
 import numpy as np
 from stallings_amalgams import Graph
 from stallings_amalgams.words import inverse_word,inverse_label,tree_word
+from stallings_amalgams.presentation import Presentation
 
 def Step1(
     G1: Graph,
@@ -94,15 +95,11 @@ def Step3(
     
     # Wedge a copy of G1 on each G1 comp of G
     for C in comps1:
-        for u in C:
-            break
-        G.Wedge(G1,u,G1.basepoint)
+        G.Wedge(G1,next(iter(C)),G1.basepoint)
     
     # same for G2
     for C in comps2:
-        for u in C:
-            break
-        G.Wedge(G2,u,G2.basepoint)
+        G.Wedge(G2,next(iter(C)),G2.basepoint)
     G.fold()
     return(G)
 
@@ -283,15 +280,15 @@ def Step6(
     # ----------------------------------------------------------
     if G.is_monochromatic_vertex(G.basepoint, G1, G2):
         K = G.stabilizer(G.basepoint, G1)
-        L = K & set(A.keys())
+        L1 = K & set(A.keys())
         G1elms=G1.get_cosets()
         G2elms=G2.get_cosets()
-        if len(L)>1:
-            L = {A[i] for i in L}
-            rel = Graph.rel_cayley(G2,L)
+        if len(L1)>1:
+            L2 = {A[i] for i in L1}
+            rel = Graph.rel_cayley(G2,L2)
             G.Wedge(rel, G.basepoint, rel.basepoint)
             for a in A:
-                if a not in L:
+                if a not in L1:
                     G.glue([G.read_word(G.basepoint, G1elms[a]),
                                G.read_word(G.basepoint, G2elms[A[a]])]
                               )
@@ -302,15 +299,15 @@ def Step6(
 
     elif G.is_monochromatic_vertex(G.basepoint, G2, G1):
         K = G.stabilizer(G.basepoint, G2)
-        L = K & set(A.values())
+        L2 = K & set(A.values())
         G1elms=G1.get_cosets()
         G2elms=G2.get_cosets()
-        if len(L)>1:
-            L = {i for i in A if A[i] in L}
-            rel = Graph.rel_cayley(G1,L)
+        if len(L2)>1:
+            L1 = {i for i in A if A[i] in L2}
+            rel = Graph.rel_cayley(G1,L1)
             G.Wedge(rel, G.basepoint, rel.basepoint)
             for a in A:
-                if A[a] not in L:
+                if A[a] not in L2:
                     G.glue([G.read_word(G.basepoint, G1elms[a]),
                                G.read_word(G.basepoint, G2elms[A[a]])]
                     )
@@ -588,7 +585,60 @@ def get_pi1_gen_set(G: Graph, root = None) -> list[list[str]]:
     return gen_set
 
                                    
-            
+def get_presentation(G1: Graph,
+    G2: Graph,
+    A: dict[int,int],
+    H: list[list[str]]
+) -> Presentation:
+    PH = get_red_precover(G1,G2, A, H)
+    R1 = get_pi1_gen_set(G1)
+    R2 = get_pi1_gen_set(G2)
+    parent1, parent_label1, outside_edges1 = G1.spanning_tree_data()
+    parent2, parent_label2, outside_edges2 = G2.spanning_tree_data()
+    R12 = [ tree_word(a,parent1,parent_label1) 
+           + 
+           inverse_word(tree_word(A[a],parent2,parent_label2))  
+           for a in A
+    ]
+    R = R1+R2+R12
+    parentH, parent_labelH, outside_edgesH = PH.spanning_tree_data()
+    assert type(outside_edgesH)==list, "code only works if outside_edges is a deterministic list"
+
+    XH = [f"x{i}" for i in range(len(outside_edgesH))]
+    RH = set()
+    for v in range(PH.n_verts):
+        for r in R:
+            rel = []
+            vertex = v
+            readable = True
+            for label in r:
+                terminal = PH.next_vertex(vertex, label)
+                if terminal is None:
+                    readable = False
+                    break
+                x = (vertex, terminal, label)
+                i = next((k for k, (u1,u2,letter) in enumerate(outside_edgesH) 
+                    if (u1,u2,letter) == x or (u2,u1,inverse_label(letter)) == x), None
+                ) # note that outside_edges only contains edges with positive labels
+                if i is not None:
+                    if label.endswith("^-1"):
+                        rel+= [f"x{i}^-1"]
+                    
+                    else:
+                        rel+=[f"x{i}"]
+                vertex = terminal
+            if readable:
+                assert vertex == v, ("PH not a prevcover!",v, r, vertex)
+                RH |= {tuple(rel)}
+
+    generator_words = {
+        f"x{i}": tree_word(u, parentH, parent_labelH)
+                + [label]
+                + inverse_word(tree_word(v, parentH, parent_labelH))
+        for i, (u, v, label) in enumerate(outside_edgesH)
+    }
+    RH = [list(rel) for rel in RH]
+    return Presentation(XH,RH,generator_words)
 
 
 ## Implement normality, malnormality, presentation??
