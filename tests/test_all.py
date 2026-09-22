@@ -5,10 +5,7 @@ Created on Tue Sep  8 15:57:20 2026
 @author: jfm1v22
 """
 
-from stallings_amalgams import Graph, get_red_precover
-from stallings_amalgams.groups import create_D2n,create_Cn
-from stallings_amalgams.visualization import visualize
-from stallings_amalgams.algorithms import get_pi1_gen_set,product_graph
+from stallings_amalgams import Graph, get_red_precover,create_D2n,create_Cn,visualize,product_graph
 import numpy as np
 
 def test_empty_graph():
@@ -145,7 +142,7 @@ def test_intersection1():
 ]
     PK = get_red_precover(D24, C8, A, K)
     prod = product_graph(PH,PK)
-    R = get_pi1_gen_set(prod)
+    R = prod.get_pi1_gen_set()
     assert all(PH.read_word(PH.basepoint,g)==PH.basepoint and PK.read_word(PK.basepoint,g)==PK.basepoint for g in R)
 
 
@@ -174,7 +171,7 @@ def test_intersection2():
 
     PK = get_red_precover(D12, C4, A, K)
 
-    R = get_pi1_gen_set(product_graph(PH,PK))
+    R = product_graph(PH,PK).get_pi1_gen_set()
 
     PHK = get_red_precover(D12, C4, A, R)
     assert Graph.isomorphic_cayley_graphs(PH,PHK) == True

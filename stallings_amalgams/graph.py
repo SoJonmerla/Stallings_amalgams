@@ -1,5 +1,5 @@
 from __future__ import annotations
-from stallings_amalgams.words import inverse_label, inverse_word
+from stallings_amalgams.words import inverse_label, inverse_word, tree_word
 from collections import deque
 
 
@@ -635,12 +635,54 @@ class Graph:
                     queue.append(u)
         return parent, parent_label, outside_edges
 
-
+    def basepoint_component(self):
+            """
+            Return the connected component of the graph containing the basepoint. Where X is the gens of G.
+        
+  
+        
+            Returns:
+                Graph
+            """
+            generators = set(self.labels)
+        
+            # We only need the positive labels. The inverse edges are already
+            # stored in self.mat.
+            adjacency = {v: set() for v in range(self.n_verts)}
+        
+            for label in generators:
+                matrix = self.mat[label]
+                for u, v in np.argwhere(matrix):
+                    adjacency[u].add(v)
+                    adjacency[v].add(u)
+        
+            seen = set()
+            component = set()
+            stack = [self.basepoint]
+            seen.add(self.basepoint)
+    
+            while stack:
+                v = stack.pop()
+                component.add(v)
+    
+                for w in adjacency[v]:
+                    if w not in seen:
+                        seen.add(w)
+                        stack.append(w)
+            vertices = list(component)
+            vertices.sort()
+            N = len(vertices)
+            base_component = Graph(self.labels)
+            base_component.n_verts = N
+            for label in base_component.labels:
+                base_component.mat[label] = self.mat[label][np.ix_(vertices,vertices)]
+            component.basepoint = vertices.index(self.basepoint)
+            return base_component
 
             
     def monochromatic_components(self, G: Graph) -> list[dict]:
         """
-        Return the connected X-components of the graph. Where X is the gens of G
+        Return the connected X-components of the graph. Where X is the gens of G.
     
         generators:
             set/list of positive generators belonging to one factor.
@@ -891,4 +933,104 @@ class Graph:
         )
     
         return nx.is_isomorphic(H1, H2, edge_match=edge_match)
+
+    def get_pi1_gen_set(self: Graph, root = None) -> list[list[str]]:
+        """
+        Returns the based loops associated with edges outside a spanning tree.
+
+        Each returned word has the form ``p_v x p_u^-1``, where ``v --x--> u``
+        is an outside edge and ``p_v``, ``p_u`` are tree paths from the root.
+        
+        Parameters
+        ----------
+        graph : Graph
+        Connected folded inverse graph. Each edge is assumed to have an
+        explicitly stored inverse edge.
+        
+        root : int or None, optional
+        Root of the spanning tree. If ``None``, ``graph.basepoint`` is used.
+        
+        Returns
+        -------
+        list[list[str]]
+
+        
+
+        """
+        gen_set = []
+        if root is None:
+            root = self.basepoint
+        parent, parent_label, outside_edges = self.spanning_tree_data(root)
+        for (v,u,label) in outside_edges:
+            pv = tree_word(v,parent,parent_label)
+            pu = tree_word(u,parent,parent_label)
+            gen_set.append(pv + [label] + inverse_word(pu))
+        return gen_set
+
+
+def product_graph(G1: Graph, G2: Graph) -> Graph:
+    """
+    Construct the synchronous labelled product of two graphs.
+
+    The vertices of the product are ordered pairs ``(v1, v2)``, where
+    ``v1`` is a vertex of ``G1`` and ``v2`` is a vertex of ``G2``. The
+    pair ``(v1, v2)`` is represented internally by the integer
+
+    v1 * G2.n_verts + v2.
+
+    There is an edge
+
+    (v1, v2) --label--> (u1, u2)
+
+    precisely when both coordinate graphs contain the corresponding
+    labelled edges
+
+    v1 --label--> u1
+
+    and
+
+    v2 --label--> u2.
+
+    Parameters
+    ----------
+    G1 : Graph
+    First labelled graph.
+
+    G2 : Graph
+    Second labelled graph.
+
+    Returns
+    -------
+    Graph
+    The synchronous labelled product of ``G1`` and ``G2``.
+
+    Notes
+    -----
+    This implementation assumes that ``add_edge`` automatically adds the
+    corresponding inverse-labelled edge. Therefore, only one label from
+    each inverse pair is processed explicitly.
+    """
+    n1 = G1.n_verts
+    n2 = G2.n_verts
+    N = n1*n2
+    common_labels = G1.labels & G2.labels
+    prod = Graph(common_labels, np.array([[ [] for i in range(N) ] for j in range(N)]))
+    for v1 in range(n1):
+        for u1 in range(n2): # add edges (v1,u1) -> (v2, u2) when appropiate
+            v = v1*n2 + u1
+            for label in common_labels:
+                if label.endswith("^-1"):
+                    continue
+                
+                link1 = np.nonzero(G1.mat[label][v1])[0]
+                link2 = np.nonzero(G2.mat[label][u1])[0]
+                for v2 in link1:
+                    for u2 in link2:
+                        prod.add_edge(v, v2*n2 + u2,label)
+    prod.basepoint = (
+    G1.basepoint * n2 + G2.basepoint
+    )
+
+    return prod
+
 
