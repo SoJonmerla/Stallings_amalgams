@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
-from .graph import Graph
+from stallings_amalgams.graph import Graph
 
 def my_draw_networkx_edge_labels(
     G,
@@ -174,47 +174,47 @@ def my_draw_networkx_edge_labels(
     return text_items
 
 def visualize(H: Graph,
-    loop_rad: float = 0.5,
+    loop_rad: float = 0.7,
     loop_label_offset: float = 0.13,
     arc_rad: float = 0.25
     ) -> None:
     """
     Visualize a finite directed labelled graph.
-     
+    
     Only edges with positive labels are drawn. Inverse-labelled edges
     are omitted because they represent the reverse orientations of the
     corresponding positive-labelled edges.
-     
+    
     Edges between distinct vertices are drawn as straight edges unless
     an edge also exists in the opposite direction. In that case, the
     edges are curved to make both orientations visible. Loops are drawn
     separately, and their labels are positioned manually.
-     
+    
     The distinguished basepoint is displayed as a larger vertex with a
     black border.
-     
+    
     Parameters
     ----------
     H : Graph
     The labelled graph to visualize.
-     
+    
     loop_rad : float, default=4.0
     Curvature parameter used when drawing loops.
-     
+    
     loop_label_offset : float, default=0.30
     Vertical distance between a vertex and the first loop label at
     that vertex.
-     
+    
     arc_rad : float, default=0.25
     Curvature parameter used for edges whose reverse orientation
     is also present.
-     
+    
     Raises
     ------
     ValueError
     If the graph has no vertices, if the basepoint is invalid, or
     if one of the layout parameters is negative.
-     
+    
     Notes
     -----
     This function modifies neither the graph nor its adjacency matrices.
@@ -341,15 +341,15 @@ def visualize(H: Graph,
         connectionstyle=f"arc3, rad={loop_rad}",
         width=2,
         arrowsize=20,
-        node_size=600
+        node_size=60
     )
 
     ## Edge labels ##
     edge_labels = nx.get_edge_attributes(G,'label')
     curved_edge_labels = {edge[:-1]: edge_labels[edge] for edge in curved_edges}
     straight_edge_labels = {edge[:-1]: edge_labels[edge] for edge in straight_edges}
-    my_draw_networkx_edge_labels(G, pos, ax=ax, edge_labels=curved_edge_labels,rad = arc_rad, font_size=25)
-    nx.draw_networkx_edge_labels(G, pos, ax=ax, edge_labels=straight_edge_labels, font_size=25)
+    my_draw_networkx_edge_labels(G, pos, ax=ax, edge_labels=curved_edge_labels,rad = arc_rad, font_size=20)
+    nx.draw_networkx_edge_labels(G, pos, ax=ax, edge_labels=straight_edge_labels, font_size=20)
     # ------------------------------------------------------------------
     # Labels on loops
     #
@@ -359,16 +359,17 @@ def visualize(H: Graph,
     
     for i, (u, v, k) in enumerate(loop_edges):
         x, y = pos[u]
-    
-        ax.text(
-            x,
-            y + loop_label_offset + 0.08 * i,
-            edge_labels[(u, v, k)],
+        label = str(edge_labels[(u, v, k)])
+        ax.annotate(
+            label,
+            xy=(float(x), float(y)),
+            xytext=(0, 18 + 18 * i),
+            textcoords="offset points",
             fontsize=21,
             ha="center",
-            va="center",
+            va="bottom",
             zorder=10,
-            color="black"
+            annotation_clip=False,
         )
     
     plt.title("Directed Graph Visualization")

@@ -5,9 +5,7 @@ Created on Tue Sep  8 15:57:20 2026
 @author: jfm1v22
 """
 
-from stallings_amalgams import Graph, get_red_precover
-from stallings_amalgams.groups import create_D2n,create_Cn
-from stallings_amalgams.visualization import visualize
+from stallings_amalgams import Graph, get_red_precover,create_D2n,create_Cn,visualize,product_graph
 import numpy as np
 
 def test_empty_graph():
@@ -120,6 +118,62 @@ def test_precover_of_triv():
     goal = Graph(labels = ["a","b","c"])
     
     assert get_red_precover(D24, C8, A, H) == goal
-    
+
+
+#Check gen set of intersection is in both
+def test_intersection1():
+    D24 = create_D2n(12)
+
+    C8 = create_Cn(8)
+        
+    A = {0:0,12:4}
+
+    H = [
+        ["b"],
+        ["a", "b", "a^-1"],
+        ["a", "c", "a", "c", "a", "c"],
+    ]
+    PH = get_red_precover(D24, C8, A, H)
+
+    K = [
+    ["b"],
+    ["a", "b", "a^-1","c","a"],
+    ["a", "c", "a", "c"],
+]
+    PK = get_red_precover(D24, C8, A, K)
+    prod = product_graph(PH,PK)
+    R = prod.get_pi1_gen_set()
+    assert all(PH.read_word(PH.basepoint,g)==PH.basepoint and PK.read_word(PK.basepoint,g)==PK.basepoint for g in R)
+
+
+# Check intersection H \cap K with H \le K equals H.
+def test_intersection2():
+    A = {0:0,6: 2}
+
+    H = [
+        ["b"],
+        ["a", "b", "a^-1"],
+        ["a", "c", "a", "c", "a", "c"],
+    ]
+    K = [
+        ["b"],
+        ["a", "b", "a^-1"],
+        ["a", "c", "a", "c", "a", "c"],
+        ["a","a","a"]
+    ]
+
+
+    D12 = create_D2n(6) 
+    C4 = create_Cn(4)
+
+
+    PH = get_red_precover(D12, C4, A, H)
+
+    PK = get_red_precover(D12, C4, A, K)
+
+    R = product_graph(PH,PK).get_pi1_gen_set()
+
+    PHK = get_red_precover(D12, C4, A, R)
+    assert Graph.isomorphic_cayley_graphs(PH,PHK) == True
 
     

@@ -1,4 +1,7 @@
 from __future__ import annotations
+from stallings_amalgams.words import inverse_label, inverse_word, tree_word
+from collections import deque
+
 
 import numpy as np
 import copy
@@ -15,29 +18,29 @@ class Graph:
     ) -> None:
         """
         Initialize a finite directed labelled graph.
-         
+
         The graph is represented by a dictionary of adjacency matrices,
         with one matrix for each edge label. For every supplied positive
         label, the corresponding inverse label is added automatically.
-         
+
         Parameters
         ----------
         labels : list[str] | set[str]
         Edge labels used in the graph. A corresponding inverse label
         of the form ``"label^-1"`` is added automatically when it is
         not already present.
-         
+
         G : numpy.ndarray, optional
         A predefined labelled incidence matrix. The entry ``G[i][j]``
         should contain the labels of the directed edges from vertex
         ``i`` to vertex ``j``.
-         
+
         If omitted, the graph is initialized with one vertex and no
         edges.
-         
+
         basepoint : int, default=0
         Index of the distinguished basepoint vertex.
-         
+
         Raises
         ------
         ValueError
@@ -45,7 +48,7 @@ class Graph:
         valid vertex range, or if no edge labels are supplied.
         TypeError
         If a label is not a string.
-         
+
         Notes
         -----
         For each edge labelled ``x`` from vertex ``i`` to vertex ``j``,
@@ -205,11 +208,11 @@ class Graph:
         if n_new>0:
             for letter in self.mat:
                 a=self.mat[letter]
-                self.mat[letter]=np.full((self.n_verts,self.n_verts),0)
+                self.mat[letter]=np.full((self.n_verts,self.n_verts),0, dtype=int)
                 self.mat[letter][:self.n_verts-n_new,:self.n_verts-n_new]=a
         if label not in self.labels:
-            self.mat[label] = np.full((self.n_verts,self.n_verts),0)
-            self.mat[inverse] = np.full((self.n_verts,self.n_verts),0)
+            self.mat[label] = np.full((self.n_verts,self.n_verts),0, dtype=int)
+            self.mat[inverse] = np.full((self.n_verts,self.n_verts),0, dtype=int)
             self.labels |= {label,inverse}
         
         self.mat[label][vert_ini,  vert_end]|= 1
@@ -411,7 +414,7 @@ class Graph:
                 if pairs[i][0] > removed:
                     pairs[i][0] -=1
                 if pairs[i][1] == removed:
-                    pairs[0]=survivor
+                    pairs[i][1] = survivor
                     
                 if pairs[i][1] > removed:
                     pairs[i][1] -=1
@@ -422,20 +425,27 @@ class Graph:
         Folds the graph of self until no further folding are possible.
         
         """
-        for label in self.mat:
-            if not label.endswith("^-1"):
-                for vertex in range(self.n_verts):
-                    R=np.nonzero(self.mat[label][vertex])[0]
-                    if len(R)>1:
-                        self.glue(R)
-                        self.fold()
-                        return
-                    R=np.nonzero(self.mat[label][:,vertex])[0]
-                    if len(R)>1:
-                        self.glue(R)
-                        self.fold()
-                        return
-                
+        while True:
+            fold_found=False
+            for label in self.mat:
+                if not label.endswith("^-1"):
+                    for vertex in range(self.n_verts):
+                        R=np.nonzero(self.mat[label][vertex])[0]
+                        if len(R)>1:
+                            self.glue(R)
+                            fold_found=True
+                            break
+                            
+                            
+                        R=np.nonzero(self.mat[label][:,vertex])[0]
+                        if len(R)>1:
+                            self.glue(R)
+                            fold_found=True
+                            break
+                            
+            if not fold_found:
+                return
+                    
         
     def cut_hairs(self) -> None:
         """
@@ -559,10 +569,120 @@ class Graph:
         if component is None:
             component = {i for i in range(self.n_verts)}
         return {i for i in component if i not in self.monochromatic_vertices(G1, G2)|self.monochromatic_vertices(G2, G1)}
-            
-    def monochromatic_components(self, G):
+
+
+
+    def spanning_tree_data(
+        self: Graph,
+        root: int | None = None,
+    ) -> tuple[
+        dict[int, int | None],
+        dict[int, str],
+        list[tuple[int, int, str]],
+    ]:
         """
-        Return the connected X-components of the graph. Where X is the gens of G
+        Construct a rooted spanning tree of a connected labelled graph. Assumes 
+        folded graph
+
+        Parameters
+        ----------
+        graph : Graph
+            Connected labelled graph.
+
+        root : int or None
+            Root of the spanning tree. If ``None``, the graph basepoint is
+            used.
+
+        Returns
+        -------
+        parent : dict[int, int or None]
+            Parent of each vertex in the spanning tree. The root has parent
+            ``None``.
+
+        parent_label : dict[int, str]
+            For each non-root vertex, the label of the tree edge directed
+            from its parent to that vertex.
+
+        outside_edges : list[tuple[int, int, str]]
+            Edges outside the spanning tree. Each edge is represented once
+            as ``(source, target, label)``.
+        """
+        if root is None:
+            root = self.basepoint
+        if not 0 <= root < self.n_verts:
+            raise ValueError("root must be a vertex of the graph")
+        
+        queue = deque([root])
+        parent = {root : None}
+        parent_label = {}
+        outside_edges = []
+
+        while queue:
+            v = queue.popleft()
+            for label in self.labels:
+                if v != root and label == inverse_label(parent_label[v]):
+                    continue
+                matrix  = self.mat[label]
+                link = np.nonzero(matrix[v])[0]
+                for u in link:
+                    u = int(u)
+                    if u in parent:
+                        if not label.endswith("^-1"):
+                            outside_edges.append((v,u,label))
+                        continue
+                    parent[u] = v
+                    parent_label[u] = label
+                    queue.append(u)
+        return parent, parent_label, outside_edges
+
+    def basepoint_component(self):
+            """
+            Return the connected component of the graph containing the basepoint. Where X is the gens of G.
+        
+  
+        
+            Returns:
+                Graph
+            """
+            generators = set(self.labels)
+        
+            # We only need the positive labels. The inverse edges are already
+            # stored in self.mat.
+            adjacency = {v: set() for v in range(self.n_verts)}
+        
+            for label in generators:
+                matrix = self.mat[label]
+                for u, v in np.argwhere(matrix):
+                    adjacency[u].add(v)
+                    adjacency[v].add(u)
+        
+            seen = set()
+            component = set()
+            stack = [self.basepoint]
+            seen.add(self.basepoint)
+    
+            while stack:
+                v = stack.pop()
+                component.add(v)
+    
+                for w in adjacency[v]:
+                    if w not in seen:
+                        seen.add(w)
+                        stack.append(w)
+            vertices = list(component)
+            vertices.sort()
+            N = len(vertices)
+            base_component = Graph(self.labels)
+            base_component.n_verts = N
+            for label in base_component.labels:
+                base_component.mat[label] = self.mat[label][np.ix_(vertices,vertices)]
+            component.basepoint = vertices.index(self.basepoint)
+            return base_component
+
+            
+    def monochromatic_components(self, G: Graph) -> list[dict]:
+        """
+        Return the connected X-components of the graph. Where X is the gens of G.
     
         generators:
             set/list of positive generators belonging to one factor.
@@ -726,7 +846,7 @@ class Graph:
                 K.add(g)
     
         return K
-    
+    @staticmethod
     def rel_cayley(G,H: dict[int]):
         """
         Get rel cayley graph of H in G. H given by subset of elements of G
@@ -765,14 +885,15 @@ class Graph:
         N = self.n_verts
         self.labels|=G2.labels
         for label in self.labels:
-            zero_matrix = np.full((N,N),0)
+            zero_matrix = np.full((N,N),0, dtype=int)
             if label in self.mat:
                 zero_matrix[:n1,:n1] = self.mat[label]
             if label in G2.mat:
                 zero_matrix[n1:,n1:] = G2.mat[label]
             self.mat[label]=zero_matrix
         self.glue([u,n1+v])
-
+        
+    @staticmethod
     def isomorphic_cayley_graphs(G1, G2):
         """
         Check whether two Cayley graphs are identical up to a renumbering
@@ -812,3 +933,104 @@ class Graph:
         )
     
         return nx.is_isomorphic(H1, H2, edge_match=edge_match)
+
+    def get_pi1_gen_set(self: Graph, root = None) -> list[list[str]]:
+        """
+        Returns the based loops associated with edges outside a spanning tree.
+
+        Each returned word has the form ``p_v x p_u^-1``, where ``v --x--> u``
+        is an outside edge and ``p_v``, ``p_u`` are tree paths from the root.
+        
+        Parameters
+        ----------
+        graph : Graph
+        Connected folded inverse graph. Each edge is assumed to have an
+        explicitly stored inverse edge.
+        
+        root : int or None, optional
+        Root of the spanning tree. If ``None``, ``graph.basepoint`` is used.
+        
+        Returns
+        -------
+        list[list[str]]
+
+        
+
+        """
+        gen_set = []
+        if root is None:
+            root = self.basepoint
+        parent, parent_label, outside_edges = self.spanning_tree_data(root)
+        for (v,u,label) in outside_edges:
+            pv = tree_word(v,parent,parent_label)
+            pu = tree_word(u,parent,parent_label)
+            gen_set.append(pv + [label] + inverse_word(pu))
+        return gen_set
+
+
+def product_graph(G1: Graph, G2: Graph) -> Graph:
+    """
+    Construct the synchronous labelled product of two graphs.
+
+    The vertices of the product are ordered pairs ``(v1, v2)``, where
+    ``v1`` is a vertex of ``G1`` and ``v2`` is a vertex of ``G2``. The
+    pair ``(v1, v2)`` is represented internally by the integer
+
+    v1 * G2.n_verts + v2.
+
+    There is an edge
+
+    (v1, v2) --label--> (u1, u2)
+
+    precisely when both coordinate graphs contain the corresponding
+    labelled edges
+
+    v1 --label--> u1
+
+    and
+
+    v2 --label--> u2.
+
+    Parameters
+    ----------
+    G1 : Graph
+    First labelled graph.
+
+    G2 : Graph
+    Second labelled graph.
+
+    Returns
+    -------
+    Graph
+    The synchronous labelled product of ``G1`` and ``G2``.
+
+    Notes
+    -----
+    This implementation assumes that ``add_edge`` automatically adds the
+    corresponding inverse-labelled edge. Therefore, only one label from
+    each inverse pair is processed explicitly.
+    """
+    n1 = G1.n_verts
+    n2 = G2.n_verts
+    N = n1*n2
+    common_labels = G1.labels & G2.labels
+    prod = Graph(common_labels, np.array([[ [] for i in range(N) ] for j in range(N)]))
+    for v1 in range(n1):
+        for u1 in range(n2): # add edges (v1,u1) -> (v2, u2) when appropiate
+            v = v1*n2 + u1
+            for label in common_labels:
+                if label.endswith("^-1"):
+                    continue
+                
+                link1 = np.nonzero(G1.mat[label][v1])[0]
+                link2 = np.nonzero(G2.mat[label][u1])[0]
+                for v2 in link1:
+                    for u2 in link2:
+                        prod.add_edge(v, v2*n2 + u2,label)
+    prod.basepoint = (
+    G1.basepoint * n2 + G2.basepoint
+    )
+
+    return prod
+
+

@@ -1,0 +1,332 @@
+import numpy as np
+from stallings_amalgams import Graph
+from stallings_amalgams.words import inverse_word,inverse_label,tree_word
+
+
+def Step1(
+    G1: Graph,
+    G2: Graph,
+    A: dict[int, int],
+    H: list[list[str]]) -> Graph:
+    """
+    Produces the wedge of loops labelled with the 
+    generators of H, i.e., the graph Gamma1 of the article.
+    
+    Param:
+        G1 Graph: Graph corresponding to the Cayley graph of the group G1
+        G2 Graph: Same but for G2
+        A list of tuples of list: tuples with one element in G1 and the other in G2
+        H list of str: Each str corresponds to a word in the generators of G1 and G2
+
+    Output:
+        Graph object corresponding to the mentioned wedge.
+    """
+    G=Graph(G1.labels|G2.labels)
+    for gen in H:
+        Gtemp=Graph(G.labels)
+        for i,label in enumerate(gen[:-1]):
+            Gtemp.add_edge(i,-1,label)
+        Gtemp.add_edge(Gtemp.n_verts-1,0,gen[-1]) 
+        G.Wedge(Gtemp, 0,0)
+    return(G)
+
+def Step2(
+    G: Graph,
+    G1: Graph,
+    G2: Graph,
+    A: dict[int, int]) -> Graph:
+    
+    """
+    Folds and cuts hairs of the output of Step1 given in G
+    
+    Param:
+        G Graph: Output of Step1
+        
+    Output:
+        G Graph
+
+    """
+    G.fold()
+    G.cut_hairs()
+    return(G)
+
+def Step3(
+    G: Graph,
+    G1: Graph,
+    G2: Graph,
+    A: dict[int, int]) -> Graph:
+    """
+    Complete each monochromatic component with a copy of the
+    corresponding factor's Cayley graph.
+
+    For every G1-monochromatic component of G, attach a copy of G1 by
+    identifying an arbitrary vertex of the component with the basepoint
+    of G1. The analogous operation is then performed for every
+    G2-monochromatic component.
+
+    Finally, fold the resulting graph until it is well-labelled.
+
+    Parameters
+    ----------
+    G : Graph
+    The graph modified by this step of the reduced-precover
+    construction.
+
+    G1 : Graph
+    Cayley graph of the first finite factor.
+
+    G2 : Graph
+    Cayley graph of the second finite factor.
+
+    A : dict[int, int]
+    Dictionary representing the identification of the amalgamated
+    subgroup. Its keys represent elements of G1, and its values
+    represent the corresponding elements of G2.
+
+    This parameter is included for consistency with the complete
+    algorithm, although it is not used directly in Step 3.
+
+    Returns
+    -------
+    The graph G that is also modified in place.
+    """
+    comps1 = G.monochromatic_components(G1)
+    comps2 = G.monochromatic_components(G2)
+    
+    # Wedge a copy of G1 on each G1 comp of G
+    for C in comps1:
+        G.Wedge(G1,next(iter(C)),G1.basepoint)
+    
+    # same for G2
+    for C in comps2:
+        G.Wedge(G2,next(iter(C)),G2.basepoint)
+    G.fold()
+    return(G)
+
+    
+def Step4(
+    G: Graph,
+    G1: Graph,
+    G2: Graph,
+    A: dict[int, int]) -> Graph:
+    """
+    Perform Step 4 of the reduced-precover construction.
+
+    At every bichromatic vertex, compare the endpoints obtained by
+    reading words representing corresponding elements of the
+    amalgamated subgroup in the two factors.
+
+    If the two words are both readable but terminate at different
+    vertices, those terminal vertices are marked for identification.
+    After all bichromatic vertices have been examined, the marked
+    vertex pairs are glued and the resulting graph is folded.
+
+    Parameters
+    ----------
+    G : Graph
+    The graph on which Step 4 is performed. It is modified in place.
+
+    G1 : Graph
+    Cayley graph of the first finite factor.
+
+    G2 : Graph
+    Cayley graph of the second finite factor.
+
+    A : dict[int, int]
+    Dictionary representing the identification of the amalgamated
+    subgroup. Each key represents an element of G1, and the
+    corresponding value represents the identified element of G2.
+
+    Returns
+    -------
+    Graph
+    The modified and folded graph ``G``.
+    """
+    elements1 = G1.get_cosets()
+    elements2 = G2.get_cosets()
+    bichromatic = G.bichromatic_vertices(G1,G2)
+    vs_to_glue=[]
+    while bichromatic:
+        v = bichromatic.pop()
+        for a in A:
+            u1 = G.read_word(v, elements1[a])
+            u2 = G.read_word(v, elements2[A[a]])
+            if u1 is not None and u2 is not None and u1 != u2:
+                vs_to_glue.append([u1,u2])
+                
+    G.glue_pairs(vs_to_glue)
+    G.fold()
+    return(G)
+
+    
+def Step5(
+    G: Graph,
+    G1: Graph,
+    G2: Graph,
+    A: dict[int, int]) -> Graph:
+    """
+    Perform Step 5 of the reduced-precover construction.
+
+    Redundant monochromatic components are removed one at a time.
+    After each removal, the monochromatic components are recomputed
+    because deleting a component may change the structure of the graph.
+
+    If the resulting graph has no bichromatic vertices and the
+    stabilizer of the basepoint is trivial in at least one factor,
+    the graph is replaced by the trivial one-vertex graph.
+
+    Parameters
+    ----------
+    G : Graph
+    The graph on which Step 5 is performed. It is modified in place.
+
+    G1 : Graph
+    Cayley graph of the first finite factor.
+
+    G2 : Graph
+    Cayley graph of the second finite factor.
+
+    A : dict[int, int]
+    Dictionary representing the identification of the amalgamated
+    subgroup. Each key represents an element of G1, and its value
+    represents the corresponding element of G2.
+
+    Returns
+    -------
+    Graph
+    The modified graph ``G``.
+    """
+    while True:
+
+        components1 = G.monochromatic_components(G1)
+        components2 = G.monochromatic_components(G2)
+
+        components = [
+            (C, G1) for C in components1
+        ] + [
+            (C, G2) for C in components2
+        ]
+
+        removed = False
+
+        for C, group in components:
+
+            redundant, _, K = G.is_redundant_component(
+                C, G1, G2, A
+            )
+
+            if redundant:
+                G.remove_redundant_component(C, group, G1, G2)
+                removed = True
+                break
+
+        if not removed:
+            break
+        
+    if not G.bichromatic_vertices(G1, G2) and (
+        (G.stabilizer(G.basepoint, G1) == {G1.basepoint}
+         and G.is_monochromatic_vertex(G.basepoint, G1, G2))
+        or
+        (G.stabilizer(G.basepoint, G2) == {G2.basepoint}
+         and G.is_monochromatic_vertex(G.basepoint, G2, G1))
+    ):        
+        G.n_verts = 1
+        G.basepoint = 0
+        
+        for label in G.mat:
+            G.mat[label] = np.zeros((1, 1), dtype=int)
+    return(G)
+
+        
+def Step6(
+    G: Graph,
+    G1: Graph,
+    G2: Graph,
+    A: dict[int, int]) -> Graph:
+    """
+    Perform Step 6 of the reduced-precover construction.
+    
+    If the basepoint is monochromatic with respect to one factor, compute
+    its stabilizer in that factor and intersect the stabilizer with the
+    amalgamated subgroup. When this intersection is nontrivial, attach the
+    appropriate relative Cayley graph of the other factor at the basepoint.
+    
+    The remaining corresponding elements of the amalgamated subgroup are
+    then identified by gluing the endpoints of their representative words.
+    
+    Parameters
+    ----------
+    G : Graph
+        The graph on which Step 6 is performed. It is modified in place.
+    
+    G1 : Graph
+        Cayley graph of the first finite factor.
+    
+    G2 : Graph
+        Cayley graph of the second finite factor.
+    
+    A : dict[int, int]
+        Dictionary representing the identification of the amalgamated
+        subgroup. Each key represents an element of G1, and its corresponding
+        value represents the identified element of G2.
+    
+    Returns
+    -------
+    G
+        The graph ``G`` tha is also modified in place.
+    """
+    # ----------------------------------------------------------
+    # Case 1: basepoint is G1-monochromatic
+    # ----------------------------------------------------------
+    if G.is_monochromatic_vertex(G.basepoint, G1, G2):
+        K = G.stabilizer(G.basepoint, G1)
+        L1 = K & set(A.keys())
+        G1elms=G1.get_cosets()
+        G2elms=G2.get_cosets()
+        if len(L1)>1:
+            L2 = {A[i] for i in L1}
+            rel = Graph.rel_cayley(G2,L2)
+            G.Wedge(rel, G.basepoint, rel.basepoint)
+            for a in A:
+                if a not in L1:
+                    G.glue([G.read_word(G.basepoint, G1elms[a]),
+                               G.read_word(G.basepoint, G2elms[A[a]])]
+                              )
+    
+    # ----------------------------------------------------------
+    # Case 2: basepoint is G2-monochromatic
+    # ----------------------------------------------------------
+
+    elif G.is_monochromatic_vertex(G.basepoint, G2, G1):
+        K = G.stabilizer(G.basepoint, G2)
+        L2 = K & set(A.values())
+        G1elms=G1.get_cosets()
+        G2elms=G2.get_cosets()
+        if len(L2)>1:
+            L1 = {i for i in A if A[i] in L2}
+            rel = Graph.rel_cayley(G1,L1)
+            G.Wedge(rel, G.basepoint, rel.basepoint)
+            for a in A:
+                if A[a] not in L2:
+                    G.glue([G.read_word(G.basepoint, G1elms[a]),
+                               G.read_word(G.basepoint, G2elms[A[a]])]
+                    )
+    return(G)
+
+    
+    
+def get_red_precover(G1: Graph,G2: Graph,A: dict[int,int],H: list[list[str]]) -> Graph:
+    
+    Output=Step1(G1,G2,A,H)
+
+    Output=Step2(Output,G1, G2, A)
+
+    Output=Step3(Output,G1, G2, A)
+
+    Output=Step4(Output,G1, G2, A)
+
+    Output=Step5(Output,G1, G2, A)
+
+    Output=Step6(Output,G1, G2, A)
+
+    return(Output)
