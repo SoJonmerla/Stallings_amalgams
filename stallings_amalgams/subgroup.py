@@ -2,7 +2,7 @@ import numpy as np
 from stallings_amalgams import Graph, product_graph
 from stallings_amalgams.words import inverse_word,inverse_label,tree_word
 from stallings_amalgams.presentation import Presentation
-from stallings_amalgams.precover import get_red_precover
+from stallings_amalgams.precover import get_red_precover, Step5, Step6
 
 def is_subgroup_member(
     G1: Graph,
@@ -147,11 +147,11 @@ def is_free(
         (C, G2) for C in G2comps
     ]
     return all(
-        reduced_precover.stabilizer(next(iter(component)),factor)=={factor.basepoint}
-        for component,factor in components
+        len(C) == factor.n_verts 
+        for C,factor in components
         )
 
-def get_presentation(G1: Graph,
+def get_presentation_of_subgroup(G1: Graph,
     G2: Graph,
     A: dict[int,int],
     H: list[list[str]]
@@ -212,10 +212,13 @@ def intersection(
     A: dict[int, int],
     H: list[list[str]],
     K: list[list[str]],
-) -> list[list[str]]:
-    """Generators for the intersection of the subgroups <H> and <K>."""
+) -> Graph:
+    """Precover the intersection of the subgroups <H> and <K>."""
     PH = get_red_precover(G1,G2,A,H)
     PK = get_red_precover(G1,G2,A,K)
-    prod = product_graph(PH,PK)
+    prod = product_graph(PH,PK).basepoint_component()
+    prod.cut_hairs()
+    prod = Step5(prod,G1,G2,A)
+    prod = Step6(prod,G1,G2,A)
 
-    return prod.get_pi1_gen_set()
+    return prod

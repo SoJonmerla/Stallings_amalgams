@@ -5,7 +5,7 @@ Created on Tue Sep  8 15:57:20 2026
 @author: jfm1v22
 """
 
-from stallings_amalgams import Graph, get_red_precover,create_D2n,create_Cn,visualize,product_graph
+from stallings_amalgams import Graph, get_red_precover,create_D2n,create_Cn,visualize,product_graph, intersection, get_Cayley,semidirect_product
 import numpy as np
 
 def test_empty_graph():
@@ -82,8 +82,7 @@ def test_precover_of_factor():
 
     C4 = create_Cn(4)
 
-    # visualize(Graph.rel_cayley(C4, A.values()))
-    # visualize(get_red_precover(D12, C4, A, H1))
+
     goal1=Graph.rel_cayley(C4, A.values())
     goal1.add_edge(0, 0, "a")
     goal1.add_edge(0, 0, "b")
@@ -120,7 +119,7 @@ def test_precover_of_triv():
     assert get_red_precover(D24, C8, A, H) == goal
 
 
-#Check gen set of intersection is in both
+#Check gen set of intersection is in both. No reduction
 def test_intersection1():
     D24 = create_D2n(12)
 
@@ -146,7 +145,7 @@ def test_intersection1():
     assert all(PH.read_word(PH.basepoint,g)==PH.basepoint and PK.read_word(PK.basepoint,g)==PK.basepoint for g in R)
 
 
-# Check intersection H \cap K with H \le K equals H.
+# Check intersection H \cap K with H \le K equals H. No reduction
 def test_intersection2():
     A = {0:0,6: 2}
 
@@ -176,4 +175,48 @@ def test_intersection2():
     PHK = get_red_precover(D12, C4, A, R)
     assert Graph.isomorphic_cayley_graphs(PH,PHK) == True
 
-    
+def test_intersection_precover():
+    A = {0:0,6: 2}
+
+    H = [
+        ["b"],
+        ["a", "b", "a^-1"],
+        ["a", "c", "a", "c", "a", "c"],
+    ]
+    K = [
+        ["b"],
+        ["a", "b", "a^-1"],
+        ["a", "c", "a", "c", "a", "c"],
+        ["a","a","a"]
+    ]
+
+
+    D12 = create_D2n(6) 
+    C4 = create_Cn(4)
+
+
+    PH = get_red_precover(D12, C4, A, H)
+
+    PK = get_red_precover(D12, C4, A, K)
+
+    PHK = intersection(D12, C4, A, H, K)
+    assert PHK == PH
+
+
+# Test presentation
+
+
+# Test get_cayley
+def test_get_cayley():
+    P, complete = get_Cayley(["a","b"],[["b^-1","a","b","a^-1","a^-1","a^-1"]
+    ,["b","b","b","b"]
+    ,["a","a","a","a","a"]])
+
+    C5 = create_Cn(5,"a")
+    C4 = create_Cn(4,"b")
+    G=semidirect_product(C5,C4,{"b":{"a": ["a","a","a"]}})
+    assert Graph.isomorphic_cayley_graphs(P,G)
+    G, complete = get_Cayley(["a","b"],[["a^-1","b","a","b^-1","b^-1"],["b^-1","a","b","a^-1","a^-1"]])
+    trivial_group = Graph(["a","b"],np.array([[["a","b"]]]))
+    assert trivial_group == G
+        

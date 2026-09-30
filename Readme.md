@@ -1,6 +1,6 @@
 # Stallings Foldings for Subgroups of Amalgams
 
-A Python implementation of the generalized Stallings-folding algorithm for finitely generated subgroups of amalgams of finite groups.
+A Python implementation of the generalized Stallings-folding algorithm for finitely generated subgroups of amalgams of finite groups, together with a set of general-purpose tools to construct Cayley graphs from finite presentations.
 
 The program constructs finite labelled graphs called **reduced precovers**, representing finitely generated subgroups of an amalgam. The implementation follows the six-step construction described in Section 8 of:
 
@@ -8,23 +8,36 @@ The program constructs finite labelled graphs called **reduced precovers**, repr
 
 The finite factors are represented explicitly by labelled Cayley graphs, allowing the implementation to closely follow the combinatorial construction in the paper.
 
+The package now also provides tools for computing subgroup presentations, simplifying presentations as in Havas's Reidemeister–Schreier program and other subgroup queries (freeness, index, membership problem...)
+
 
 ## Features
 
 The package provides tools for:
 
+**Graphs**
+
 * constructing and traversing labelled graphs;
 * folding graphs;
-* obtaining core;
-* detecting monochromatic and bichromatic vertices;
-* finding monochromatic components;
-* computing subgroup stabilizers;
-* computing cosets;
-* constructing Cayley and relative Cayley graphs;
-* computing direct/semidirect products of groups;
-* constructing reduced precovers for finitely generated subgroups;
+* cutting hairs and obtaining cores;
+* computing cosets and vertex stabilizers;
+* building products of graphs;
 * visualizing the resulting labelled graphs;
 * exporting graph representations for use with TikZ and LaTeX.
+
+**Groups and subgroups**
+
+* constructing Cayley and relative Cayley graphs;
+* constructing the Cayley graph of a finitely presented group;
+* simplifying presentations using the Havas algorithm.
+
+
+**For amalgams of finite groups**
+
+* constructing reduced precovers for finitely generated subgroups of amalgams;
+* deciding subgroup membership, index, and freeness;
+* computing intersections of finitely generated subgroups;
+* extracting a presentation of a subgroup from its reduced precover;
 
 ## Mathematical setting
 
@@ -107,6 +120,87 @@ The resulting graph is the reduced precover associated with the subgroup generat
 
 Images are obtained with Tikz and Latex with datatotex() function in Stallings_amalgams/stallings_amalgams/visualization.py.
 
+## Example: subgroup queries
+
+Once a reduced precover is available, the usual subgroup questions reduce to graph operations:
+
+```python
+from stallings_amalgams import (
+    is_subgroup_member,
+    subgroup_index,
+    is_free,
+    intersection,
+    get_presentation_of_subgroup,
+    simplify_presentation,
+)
+
+word = ["a", "b", "a^-1"]
+
+is_subgroup_member(D12, C4, A, H, word)     # membership of word in <H>
+subgroup_index(D12, C4, A, H)               # index, or None if infinite
+is_free(D12, C4, A, H)                      # freeness
+
+K = [["b", "c"]]
+intersection(D12, C4, A, H, K)              # Red precover of H \cap K
+
+pres = get_presentation_of_subgroup(D12, C4, A, H) # Presentation of H!
+print(simplify_presentation(pres))
+```
+
+## Example: Cayley graph of a finitely presented group
+
+For a group given only by a presentation, `get_Cayley` builds its Cayley graph by trying to obtain a complete graph by adding edges and cycles labelling the defining relations.
+
+```python
+from stallings_amalgams import get_Cayley
+
+# The infinite cyclic group: < a| >
+G, complete = get_Cayley(
+    ["a"],
+    [],
+    timeout=5.0,
+)
+
+print(G.n_verts)     # number of vertices of constructed graph.
+print(complete)      # False, because the group is infinite
+
+# The abelian group C2 X C3: < a, b | a^2, b^2, [a,b] >
+G, complete = get_Cayley(
+    ["a", "b"],
+    [["a", "a"], ["b", "b","b"],["a","b","a^-1","b^-1"]],
+    timeout=5.0,
+)
+
+print(G.n_verts)     # number of vertices. In this case 6.
+print(complete)      # True since the group is finite and 5 seconds is enough here.
+```
+```
+
+`get_Cayley` returns a pair `(graph, complete)`. If the group is finite and the time budget suffices, `complete` is `True` and `graph` is the full Cayley graph. Otherwise, `graph` is the partial construction reached before the timeout.
+
+## Example: semidirect products
+
+For a semidirect product $G_1 \rtimes G_2$, specify the action as a table of conjugation relations. For example, $C_5 \rtimes C_4$ with $b^{-1} a b = a^3$:
+
+```python
+from stallings_amalgams import create_Cn, semidirect_product, visualize
+
+C5 = create_Cn(5, ["a"])
+C4 = create_Cn(4, ["b"])
+
+G = semidirect_product(
+    C5,
+    C4,
+    {"b": {"a": ["a", "a", "a"]}},     # b^-1 a b = a^3
+)
+visualize(G)
+```
+
+Which outputs:
+
+![Image](/docs/C5semiC4_example_py.png "Cayley graph of G")
+
+The `action` dictionary must be a genuine homomorphism $G_2 \to \mathrm{Aut}(G_1)$. This is not verified by the function. This can be also obtained by giving the presentation of the semidirect product (though slowlier). The direct product can also be obtained by direct_product(C5,C4). 
 
 
 ## Package structure
@@ -123,60 +217,36 @@ Stallings_amalgams/
 │   └── D12_C4_Example.py
 ├── stallings_amalgams/
 │   ├── __init__.py
-│   ├── algorithms.py
 │   ├── graph.py
+│   ├── words.py
 │   ├── groups.py
+│   ├── presentation.py
+│   ├── precover.py
+│   ├── subgroup.py
+│   ├── reidemeister_schreier.py
 │   └── visualization.py
-|___ tests/
-|    └── test_all.py
+├── tests/
+│   └── test_all.py
 ├── .gitignore
 ├── pyproject.toml
 └── README.md
 ```
 
+
 The main modules are:
 
-* `graph.py`: labelled-graph representation and fundamental graph operations;
-* `algorithms.py`: implementation of the six-step reduced-precover construction;
-* `groups.py`: constructors for finite groups represented by Cayley graphs;
+* `graph.py`: labelled-graph representation, graph operations, and product of graphs;
+* `words.py`: utilities for words, labels, and tree paths;
+* `groups.py`: constructors for finite groups represented by Cayley graphs, and the Cayley graph construction for finitely presented groups;
+* `presentation.py`: the `Presentation` dataclass;
+* `precover.py`: the six-step reduced-precover construction;
+* `subgroup.py`: subgroup queries (membership, index, freeness, intersection, presentation of subgroup);
+* `reidemeister_schreier.py`: simplification of subgroup presentations;
 * `visualization.py`: NetworkX, Matplotlib, and TikZ visualization tools.
 
-## Current group constructors
-
-The package currently provides:
-
-```python
-create_D2n(n)
-```
-
-which constructs the dihedral group of order 2n, and
-
-```python
-create_Cn(n)
-```
-
-which constructs the cyclic group of order n.
-
-To obtain the direct/semidirect product of two groups, do
-
-```python
-direct_product(G1,G2)
-semidirect_product(G1,G2,action)
-```
 
 
-For example, $C5 = \langle a \rangle \rtimes C4 = \langle b \rangle$, 
-where the action is given by $b^{-1}ab=a^3$, is given by:
 
-```python
-C5 = create_Cn(5,"a")
-C4 = create_Cn(4,"b")
-G=semidirect_product(create_Cn(5,"a"),create_Cn(4,"b"),{"b":{"a": ["a","a","a"]}})
-visualize(G)
-```
-Which outputs:
-
-![Image](/docs/C5semiC4_example_py.png "Cayley graph of G")
 
 
 
@@ -186,30 +256,16 @@ Which outputs:
 
 This is an independent software project accompanying my study and implementation of the algorithm in Markus-Epstein's paper.
 
-The implementation is currently being validated using explicit examples and small finite-group constructions. It should therefore be regarded as research software under active development.
+I am currently trying to improve the visualization. Possibly using Manim.
 
-## Technical highlights
-
-This project combines:
-
-* abstract algebra and combinatorial group theory;
-* graph algorithms and graph traversal;
-* finite-group computations;
-* implementation of a research algorithm in Python;
-* graph visualization using NetworkX and Matplotlib;
-* generation of publication-quality graph representations using TikZ;
-* mathematical verification through explicit examples.
 
 ## Future work
 
 Planned improvements include:
 
-* validating additional examples from the literature;
 * improving API and mathematical documentation;
-* adding further finite-group constructors;
-* improving performance for larger finite groups;
-* investigating integration with GAP;
-* Implementation of rest of L. Markus-Epsteins algorithms in her paper: Algorithmic problems in amalgams of finite groups;
+* improving visualization. Possibly with Manim. 
+* use my code to explore other finite group theory queries (like detecting simple groups...)
 
 ## Improvements that require some research
 
@@ -219,7 +275,8 @@ Planned improvements include:
 
 ## Reference
 
-L. Markus-Epstein, *Stallings' Foldings and Subgroups of Amalgams of Finite Groups*.
+* L. Markus-Epstein, *Stallings' Foldings and Subgroups of Amalgams of Finite Groups*.
+* G. Havas, *A Reidemeister–Schreier program*, Lecture Notes in Mathematics 372 (1974), 347–356.
 
 ## Author
 

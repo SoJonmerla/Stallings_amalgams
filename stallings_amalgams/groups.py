@@ -1,8 +1,11 @@
 # groups.py
-
-from stallings_amalgams import Graph
+import time
+from stallings_amalgams.graph import Graph
+from stallings_amalgams.presentation import Presentation 
+from stallings_amalgams.reidemeister_schreier import simplify_presentation
+from stallings_amalgams.words import inverse_label
 import numpy as np
-from stallings_amalgams.visualization import visualize,datatotex
+
 
 
 def create_D2n(n: int,labels = ["a","b"]) -> Graph:
@@ -98,7 +101,43 @@ def direct_product(G1: Graph, G2: Graph) -> Graph:
 
 def semidirect_product(G1: Graph, G2:Graph, action: dict[str, dict[str, list[str]]]) -> Graph:
     """
-    Make sure labels of G1 and G2 are distinct!
+    Build the Cayley graph of the semidirect product ``G1 ⋊ G2``. 
+    Probably faster than using the presentation.
+
+    ``G1`` is the normal factor and ``G2`` acts on it by conjugation
+    through the homomorphism encoded in ``action``. Every element of
+    the product is represented by a pair ``(i, j)`` with ``i ∈ G1``
+    and ``j ∈ G2``; that pair is stored at the integer vertex
+
+        ``i * G2.n_verts + j``
+    Parameters
+    ----------
+    G1 : Graph
+        Cayley graph of the normal factor. Its edge labels are the
+        generators of ``G1``.
+    G2 : Graph
+        Cayley graph of the acting factor. Its edge labels are the
+        generators of ``G2``.
+       .. warning::
+           The label sets of ``G1`` and ``G2`` must be disjoint.
+           No check is performed; if a label is used in both graphs,
+           the resulting Cayley graph is meaningless.
+    action : dict[str, dict[str, list[str]]]
+        Specification of the action of ``G2`` on ``G1``. The outer
+        key is a generator of ``G2``, the inner key a generator of
+        ``G1``, and the value a word in the generators of ``G1``
+        giving the conjugate. Concretely,
+
+            ``action["b"]["a"] == ["a", "a", "a"]``
+
+        declares the relation ``b^-1 a b = a^3``. All actions of gens of G1
+        on all generators of G2 must be specified.
+    Returns
+    -------
+    Graph
+        The Cayley graph of ``G1 ⋊ G2``, with ``G1.n_verts * G2.n_verts``
+        vertices, basepoint ``0`` (the identity of the product), and
+        labels ``G1.labels | G2.labels``.
     """
     n1 = G1.n_verts
     n2 = G2.n_verts
@@ -122,16 +161,105 @@ def semidirect_product(G1: Graph, G2:Graph, action: dict[str, dict[str, list[str
                     Gtemp.add_edge(1,-1,a)
                     Gtemp.add_edge(2,-1,b)
                     for c,letter in enumerate(reversed(action[b][a][1:])):
-                        Gtemp.add_edge(3+c, -1,letter+"^-1")
+                        Gtemp.add_edge(3+c, -1,inverse_label(letter))
                     Gtemp.add_edge(0,Gtemp.n_verts -1,action[b][a][0])
-                    G.Wedge(Gtemp, i*n2 + j, 0)
+                    for k in range(Gtemp.n_verts):
+                        G.Wedge(Gtemp, i*n2 + j, k)
 
     G.fold()                
     return(G)
                     
-                        
-            
-            
-            
+def get_Cayley(
+    generators: list[str],
+    relators: list[list[str]],
+    timeout : float = 1800.0
+) -> tuple[Graph,bool]:
+    """
+    Attempt to build the Cayley graph of the group presented by
+    ``<generators | relators>``. As of 24/09/2026, not yet 100% sure that
+    this terminates if group is finite. But basically we 
+    are just adding conjugates of generators, so obtaining the normal closure N of 
+    set of relators R, so at some point, the finite set of generators of N must be 
+    obtained.
+
+    The presentation is first reduced by :func:`simplify_presentation`,
+    so redundant generators and relators are removed before the
+    enumeration begins.
+
+    Parameters
+    ----------
+    generators : list[str]
+        Group generators. Each generator is used as the label
+        of a directed edge in the Cayley graph; the inverse edge
+        is added automatically.
+    relators : list[list[str]]
+        Defining relators, each given as a list of edge
+        labels.
+    timeout : float, default=1800.0
+        Time budget in seconds. If the enumeration has not terminated
+        within this many seconds of wall-clock time, the function
+        returns the partial graph built so far together with ``False``.
+
+    Returns
+    -------
+    G : Graph
+        The Cayley graph of the group, or, if ``timeout`` was exceeded,
+        the largest partial graph constructed before the deadline.
+    complete : bool
+        ``True`` if the construction ran to completion, meaning ``G``
+        is the full Cayley graph. 
+        ``False`` if the deadline was reached first, meaning ``G`` is
+         a partial graph and the group is likely
+        infinite.
+
+    Notes
+    -----
+    A ``False`` return value does not *prove* the group is infinite —
+    it only means the enumeration did not finish in the allotted time.
+    
+    Examples
+    --------
+    >>> G, ok = get_Cayley(["a", "b"], [["a", "a"], ["b", "b", "b"],["a","b","a","b^-1"]])
+    >>> ok
+    True
+    >>> G.n_verts
+    6
+
+    >>> G, ok = get_Cayley(["a"], [], timeout=1000000000000000)      # Z is infinite, trust me.
+    >>> ok
+    False
+    """
+    deadline = time.monotonic() + timeout
+    
+    pres = Presentation(generators,relators)
+    pres = simplify_presentation(pres)
+    generators,relators = pres.generators, pres.relators
+    Gtemp = Graph(generators)
+    for r in relators:
+        Gtemp.add_edge(0,-1,r[0])
+        for i,letter in enumerate(r[1:-1]):
+            Gtemp.add_edge(Gtemp.n_verts-1,-1,letter)
+        Gtemp.add_edge(Gtemp.n_verts-1,0,r[-1])
+
+    G = Graph(generators)
+    while True:
+        complete = True
+        for v in range(G.n_verts):
+            for label in G.labels:
+                if not G.mat[label][v].any():
+                    complete = False
+                    G.add_edge(v,-1,label)
+                    for j in range(Gtemp.n_verts):
+                        G.Wedge(Gtemp,G.n_verts-1,j)
+
+        if complete:
+            return G, True
+        
+        if v % 64 == 0 and time.monotonic() > deadline:
+            return G, False
+        
+        G.fold()
+        
+
             
             

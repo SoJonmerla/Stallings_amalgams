@@ -676,7 +676,7 @@ class Graph:
             base_component.n_verts = N
             for label in base_component.labels:
                 base_component.mat[label] = self.mat[label][np.ix_(vertices,vertices)]
-            component.basepoint = vertices.index(self.basepoint)
+            base_component.basepoint = vertices.index(self.basepoint)
             return base_component
 
             
